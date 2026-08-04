@@ -1,8 +1,8 @@
 import os
 
 # ---------------- TELEGRAM ----------------
-TELEGRAM_BOT_TOKEN = os.environ.get("8866845152:AAHD7nVTuvtV7v49Vrn-k4F_4DOrvt16uRs")
-TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@SYSTEMICNEWS")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "TELEGRAM_CHANNEL_ID")
 
 if not TELEGRAM_BOT_TOKEN:
     raise RuntimeError(
@@ -10,7 +10,7 @@ if not TELEGRAM_BOT_TOKEN:
     )
 
 # ---------------- GROQ ----------------
-GROQ_API_KEY = os.environ.get("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")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 if not GROQ_API_KEY:
     raise RuntimeError(
