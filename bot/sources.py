@@ -1,10 +1,6 @@
-"""
-Fetches candidate stories from major RSS feeds, deep-dives a chosen topic
-via Google News RSS search, and extracts readable article text.
-"""
-
 import time
 import urllib.parse
+
 import feedparser
 import trafilatura
 
@@ -12,137 +8,184 @@ import config
 
 
 def fetch_top_candidates():
-    """Pull the top few entries from each configured RSS feed.
-
-    Returns a list of dicts: {title, link, summary, source, published}
-    """
     candidates = []
-    for source_name, url in config.RSS_FEEDS.items():
+
+    for source, url in config.RSS_FEEDS.items():
         try:
             feed = feedparser.parse(url)
-        except Exception as e:
-            print(f"[warn] could not read feed {source_name}: {e}")
+        except Exception:
             continue
 
         for entry in feed.entries[: config.TOP_CANDIDATES_PER_FEED]:
+
             candidates.append(
                 {
-                    "title": entry.get("title", "").strip(),
-                    "link": entry.get("link", "").strip(),
-                    "summary": entry.get("summary", "").strip(),
-                    "source": source_name,
-                    "published": entry.get("published", ""),
+                    "title": entry.get("title", ""),
+                    "summary": entry.get("summary", ""),
+                    "link": entry.get("link", ""),
+                    "source": source,
                 }
             )
+
     return candidates
 
 
-def _keyword_overlap_score(title_a, title_b):
-    """Very simple similarity: fraction of shared significant words."""
+def similarity(a, b):
+
     stop = {
-        "the", "a", "an", "to", "of", "in", "on", "for", "and", "is",
-        "at", "as", "by", "with", "after", "over", "amid", "says",
+        "the",
+        "a",
+        "an",
+        "to",
+        "of",
+        "and",
+        "for",
+        "in",
+        "on",
+        "with",
+        "at",
+        "is",
+        "are",
     }
-    words_a = {w.lower().strip(".,:;'\"") for w in title_a.split() if w.lower() not in stop and len(w) > 2}
-    words_b = {w.lower().strip(".,:;'\"") for w in title_b.split() if w.lower() not in stop and len(w) > 2}
-    if not words_a or not words_b:
-        return 0.0
-    overlap = words_a.intersection(words_b)
-    return len(overlap) / min(len(words_a), len(words_b))
+
+    sa = {
+        x.lower()
+        for x in a.split()
+        if len(x) > 2 and x.lower() not in stop
+    }
+
+    sb = {
+        x.lower()
+        for x in b.split()
+        if len(x) > 2 and x.lower() not in stop
+    }
+
+    if not sa or not sb:
+        return 0
+
+    return len(sa & sb) / min(len(sa), len(sb))
 
 
-def pick_top_story(candidates, already_posted_titles):
-    """Group similar headlines together (same real-world story appearing on
-    multiple outlets counts as more important), skip anything already
-    posted today, and return the story covered by the most outlets.
-    """
-    groups = []  # each group: {"title": str, "items": [candidate,...]}
+def pick_top_story(candidates, already_posted):
 
-    for c in candidates:
-        if any(_keyword_overlap_score(c["title"], t) > 0.6 for t in already_posted_titles):
-            continue  # skip stories already posted today
+    groups = []
 
-        placed = False
+    for item in candidates:
+
+        if any(similarity(item["title"], old) > 0.6 for old in already_posted):
+            continue
+
+        matched = False
+
         for g in groups:
-            if _keyword_overlap_score(c["title"], g["title"]) > 0.45:
-                g["items"].append(c)
-                placed = True
+
+            if similarity(item["title"], g["title"]) > 0.45:
+                g["items"].append(item)
+                matched = True
                 break
-        if not placed:
-            groups.append({"title": c["title"], "items": [c]})
+
+        if not matched:
+            groups.append(
+                {
+                    "title": item["title"],
+                    "items": [item],
+                }
+            )
 
     if not groups:
         return None
 
-    groups.sort(key=lambda g: len(g["items"]), reverse=True)
-    top_group = groups[0]
-    return top_group
+    groups.sort(key=lambda x: len(x["items"]), reverse=True)
+
+    return groups[0]
 
 
-def search_google_news(query, limit=8):
-    """Search Google News RSS for a query and return candidate articles."""
-    encoded = urllib.parse.quote(query)
-    url = f"https://news.google.com/rss/search?q={encoded}&hl=en-US&gl=US&ceid=US:en"
-    try:
-        feed = feedparser.parse(url)
-    except Exception as e:
-        print(f"[warn] google news search failed for '{query}': {e}")
-        return []
+def google_news(query):
 
-    results = []
-    for entry in feed.entries[:limit]:
-        results.append(
+    url = (
+        "https://news.google.com/rss/search?q="
+        + urllib.parse.quote(query)
+        + "&hl=en-US&gl=US&ceid=US:en"
+    )
+
+    feed = feedparser.parse(url)
+
+    result = []
+
+    for item in feed.entries[: config.DEEP_DIVE_ARTICLE_LIMIT]:
+
+        result.append(
             {
-                "title": entry.get("title", "").strip(),
-                "link": entry.get("link", "").strip(),
-                "summary": entry.get("summary", "").strip(),
-                "source": entry.get("source", {}).get("title", "Google News") if hasattr(entry, "get") else "Google News",
+                "title": item.get("title", ""),
+                "summary": item.get("summary", ""),
+                "link": item.get("link", ""),
             }
         )
-    return results
+
+    return result
 
 
-def extract_full_text(url, timeout=15):
-    """Try to pull full readable article text from a URL. Falls back to
-    empty string if extraction fails (bot will use the RSS summary instead).
-    """
+def extract_text(url):
+
     try:
         downloaded = trafilatura.fetch_url(url)
+
         if not downloaded:
             return ""
-        text = trafilatura.extract(downloaded) or ""
-        return text.strip()
+
+        text = trafilatura.extract(downloaded)
+
+        return text or ""
+
     except Exception:
         return ""
 
 
-def gather_deep_dive_texts(topic_title, limit=None):
-    """Search Google News widely around the topic and collect readable
-    text (or RSS summary fallback) from multiple outlets.
-    """
-    limit = limit or config.DEEP_DIVE_ARTICLE_LIMIT
-    articles = search_google_news(topic_title, limit=limit)
+def gather_deep_dive_texts(title):
 
-    texts = []
-    for art in articles:
-        body = extract_full_text(art["link"])
+    news = google_news(title)
+
+    articles = []
+
+    for article in news:
+
+        body = extract_text(article["link"])
+
         if not body:
-            body = art["summary"]
-        if body:
-            texts.append({"source": art["source"], "title": art["title"], "text": body[:2000]})
-        time.sleep(0.3)  # be polite to servers
-    return texts
+            body = article["summary"]
+
+        articles.append(
+            {
+                "title": article["title"],
+                "text": body[:2000],
+            }
+        )
+
+        time.sleep(0.2)
+
+    return articles
 
 
-def gather_politician_reactions(topic_title):
-    """For each tracked politician, search for their reaction to the topic."""
+def gather_politician_reactions(title):
+
     reactions = []
-    for name in config.POLITICIANS:
-        query = f"{name} {topic_title}"
-        results = search_google_news(query, limit=config.POLITICIAN_REACTION_LIMIT)
-        for r in results:
-            body = r["summary"] or extract_full_text(r["link"])
-            if body:
-                reactions.append({"person": name, "title": r["title"], "text": body[:800]})
-        time.sleep(0.3)
+
+    for person in config.POLITICIANS:
+
+        query = person + " " + title
+
+        news = google_news(query)[: config.POLITICIAN_REACTION_LIMIT]
+
+        for article in news:
+
+            reactions.append(
+                {
+                    "person": person,
+                    "title": article["title"],
+                    "text": article["summary"][:600],
+                }
+            )
+
+        time.sleep(0.2)
+
     return reactions
