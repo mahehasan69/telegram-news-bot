@@ -97,8 +97,25 @@ def main():
         politician_reactions,
     )
 
-    full_post = f"📰 <b>{topic_title}</b>\n\n{report}"
+   source = top_group["items"][0]["source"]
 
+full_post = f"""
+🚨 <b>BREAKING NEWS</b>
+
+<b>{topic_title}</b>
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+{report}
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 <b>Source:</b> {source}
+
+📰 <b>SYSTEMIC NEWS</b>
+
+#SystemicNews
+"""
     print("[INFO] Posting to Telegram...")
 
     telegram_poster.post_to_channel(
