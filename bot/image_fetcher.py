@@ -1,5 +1,3 @@
-# image_fetcher.py
-
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -9,89 +7,131 @@ HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/137.0 Safari/537.36"
+        "Chrome/137 Safari/537.36"
     )
 }
 
 
-def get_article_image(article_url: str):
-    """
-    Returns the best image URL from a news article.
-    """
+def get_article_image(url):
 
     try:
-        r = requests.get(article_url, headers=HEADERS, timeout=15)
-        r.raise_for_status()
 
-        soup = BeautifulSoup(r.text, "html.parser")
+        html = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=20
+        ).text
 
-        # ---------- Open Graph ----------
-        og = soup.find("meta", property="og:image")
-        if og and og.get("content"):
-            return urljoin(article_url, og["content"])
+        soup = BeautifulSoup(html, "html.parser")
 
-        # ---------- Twitter ----------
-        tw = soup.find("meta", attrs={"name": "twitter:image"})
-        if tw and tw.get("content"):
-            return urljoin(article_url, tw["content"])
+        candidates = []
 
-        # ---------- Schema ----------
-        schema = soup.find("meta", itemprop="image")
-        if schema and schema.get("content"):
-            return urljoin(article_url, schema["content"])
+        # OpenGraph
+        for tag in soup.find_all("meta", property="og:image"):
+            if tag.get("content"):
+                candidates.append(tag["content"])
 
-        # ---------- Largest image ----------
-        imgs = soup.find_all("img")
+        # Secure OpenGraph
+        for tag in soup.find_all("meta", property="og:image:secure_url"):
+            if tag.get("content"):
+                candidates.append(tag["content"])
 
-        for img in imgs:
+        # Twitter
+        for tag in soup.find_all("meta", attrs={"name": "twitter:image"}):
+            if tag.get("content"):
+                candidates.append(tag["content"])
+
+        # JSON-LD
+        for tag in soup.find_all("meta", itemprop="image"):
+            if tag.get("content"):
+                candidates.append(tag["content"])
+
+        # Images inside article
+        article = soup.find("article")
+
+        if article:
+
+            for img in article.find_all("img"):
+
+                src = (
+                    img.get("data-src")
+                    or img.get("data-original")
+                    or img.get("data-lazy-src")
+                    or img.get("src")
+                )
+
+                if src:
+                    candidates.append(src)
+
+        # Whole page
+        for img in soup.find_all("img"):
+
             src = (
                 img.get("data-src")
-                or img.get("data-lazy-src")
+                or img.get("data-original")
                 or img.get("src")
             )
 
-            if not src:
-                continue
+            if src:
+                candidates.append(src)
 
-            src = urljoin(article_url, src)
+        cleaned = []
 
-            if any(x in src.lower() for x in [
+        for img in candidates:
+
+            img = urljoin(url, img)
+
+            if any(x in img.lower() for x in [
                 "logo",
-                "icon",
                 "avatar",
+                "icon",
                 "sprite",
-                "banner",
                 "ads",
                 "advert",
+                "favicon",
             ]):
                 continue
 
-            return src
+            cleaned.append(img)
+
+        if cleaned:
+            return cleaned[0]
 
     except Exception as e:
-        print(f"[IMAGE] {e}")
+        print(e)
 
     return None
 
 
 def download_image(image_url, filename="news.jpg"):
-    """
-    Downloads the image locally.
-    Returns filename or None.
-    """
 
     if not image_url:
         return None
 
     try:
-        r = requests.get(image_url, headers=HEADERS, timeout=20)
-        r.raise_for_status()
+
+        r = requests.get(
+            image_url,
+            headers=HEADERS,
+            timeout=30,
+            stream=True,
+        )
+
+        if r.status_code != 200:
+            return None
 
         with open(filename, "wb") as f:
-            f.write(r.content)
+
+            for chunk in r.iter_content(8192):
+
+                if chunk:
+                    f.write(chunk)
 
         return filename
 
     except Exception as e:
-        print(f"[DOWNLOAD] {e}")
+
+        print(e)
+
         return None
+        
