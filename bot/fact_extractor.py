@@ -284,7 +284,8 @@ def estimate_confidence(articles):
             time.sleep(2)
 
     return ""
-    def parse_facts(text):
+    
+def parse_facts(text):
 
     if not text:
 
@@ -311,7 +312,6 @@ def estimate_confidence(articles):
     except Exception:
 
         start = text.find("{")
-
         end = text.rfind("}")
 
         if start == -1 or end == -1:
@@ -337,7 +337,7 @@ def estimate_confidence(articles):
             result[key] = data[key]
 
     return result
-    def print_fact_statistics(facts):
+def print_fact_statistics(facts):
 
     print()
 
