@@ -10,7 +10,7 @@ import image_fetcher
 import hashtags
 import breaking
 import database
-
+import news_card
 
 
 
