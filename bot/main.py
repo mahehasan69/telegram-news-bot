@@ -103,6 +103,15 @@ news_category = category.detect(topic_title, report)
 
 source = top_group["items"][0]["source"]
 
+news_category = category.detect(topic_title, report)
+
+tags = hashtags.generate(
+    topic_title,
+    news_category,
+)
+
+source = top_group["items"][0]["source"]
+
 full_post = f"""
 🚨 <b>BREAKING NEWS</b>
 
@@ -120,7 +129,9 @@ full_post = f"""
 
 📰 <b>SYSTEMIC NEWS</b>
 
-#SystemicNews
+━━━━━━━━━━━━━━━━━━
+
+{tags}
 """
     print("[INFO] Posting to Telegram...")
 
