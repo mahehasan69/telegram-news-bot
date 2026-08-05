@@ -1,6 +1,7 @@
 import category
 import breaking
 import database
+import fact_extractor
 import hashtags
 import image_fetcher
 import news_card
@@ -11,7 +12,11 @@ import telegram_poster
 
 def main():
 
-    print("[INFO] Fetching headlines...")
+    print("=" * 60)
+    print("SYSTEMIC NEWS v2")
+    print("=" * 60)
+
+    print("[1/8] Fetching headlines...")
 
     candidates = sources.fetch_top_candidates()
 
@@ -19,32 +24,27 @@ def main():
         print("[ERROR] No headlines found.")
         return
 
-    top_group = None
+    top_group = sources.pick_top_story(
+        candidates,
+        database.get_posted_titles(),
+    )
 
-    for group in sources.group_candidates(candidates):
-
-        article = group["items"][0]
-
-        if database.already_posted(
-            article["title"],
-            article["link"],
-        ):
-            continue
-
-        top_group = group
-        break
-
-    if top_group is None:
+    if not top_group:
         print("[INFO] Nothing new.")
         return
 
-    topic_title = top_group["title"]
+    article = top_group["items"][0]
 
-    article_url = top_group["items"][0]["link"]
+    topic_title = article["title"]
+    article_url = article["url"]
+    source = article["source"]
 
-    source = top_group["items"][0]["source"]
+    print()
+    print("[SELECTED]")
+    print(topic_title)
+    print()
 
-    print(f"[INFO] Selected: {topic_title}")
+    print("[2/8] Downloading image...")
 
     image_path = None
 
@@ -56,8 +56,6 @@ def main():
 
         if image_url:
 
-            print("[INFO] Downloading image...")
-
             image_path = image_fetcher.download_image(
                 image_url
             )
@@ -66,25 +64,27 @@ def main():
 
         print("[IMAGE]", e)
 
-    print("[INFO] Reading articles...")
+    print("[3/8] Researching story...")
 
-    media_texts = sources.gather_deep_dive_texts(
+    articles = sources.gather_deep_dive_texts(
         topic_title
     )
 
-    politician_reactions = (
-        sources.gather_politician_reactions(
-            topic_title
-        )
+    print(f"[INFO] {len(articles)} articles collected.")
+
+    print("[4/8] Extracting verified facts...")
+
+    facts = fact_extractor.build_fact_sheet(
+        articles
     )
 
-    print("[INFO] Building AI report...")
+    print("[5/8] Writing article...")
 
     report = summarizer.build_report(
-        topic_title,
-        media_texts,
-        politician_reactions,
+        facts
     )
+
+    print("[6/8] Detecting category...")
 
     news_category = category.detect(
         topic_title,
@@ -102,9 +102,6 @@ def main():
     )
 
     card = image_path
-    # ----------------------------
-    # Create News Card
-    # ----------------------------
 
     if image_path:
 
@@ -122,10 +119,6 @@ def main():
             print("[CARD]", e)
 
             card = image_path
-
-    # ----------------------------
-    # Build Telegram Post
-    # ----------------------------
 
     full_post = f"""
 {status}
@@ -149,14 +142,14 @@ def main():
 {tags}
 """
 
-    print("[INFO] Posting to Telegram...")
+    print("[7/8] Posting to Telegram...")
 
     telegram_poster.post_to_channel(
         full_post,
         card,
     )
 
-    print("[INFO] Saving to database...")
+    print("[8/8] Saving database...")
 
     database.save_post(
         topic_title,
@@ -164,7 +157,8 @@ def main():
         source,
     )
 
-    print("[DONE] News posted successfully.")
+    print()
+    print("✅ News posted successfully.")
 
 
 if __name__ == "__main__":
