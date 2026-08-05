@@ -1,12 +1,20 @@
 import json
-import ollama
+import re
+import logging
+from typing import Any, Dict, List, Optional
 
+try:
+    import ollama
+except Exception:  # pragma: no cover - allow import failure when testing without ollama
+    ollama = None
+
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """
 You are SYSTEMIC NEWS FACT ENGINE.
 
 You are not a news writer.
-
 You are an investigative journalist and fact checker.
 
 Your only goal is to discover the truth.
@@ -26,73 +34,6 @@ Rules:
 Return ONLY valid JSON.
 """
 
-
-def build_context(articles):
-
-    context = ""
-
-    for i, article in enumerate(articles, 1):
-
-        context += f"""
-
-ARTICLE {i}
-
-SOURCE:
-{article["source"]}
-
-TITLE:
-{article["title"]}
-
-TEXT:
-{article["text"]}
-
-------------------------------------
-
-"""
-
-    return context
-
-def source_agreement(articles):
-
-    counts = {}
-
-    for article in articles:
-
-        source = article["source"]
-
-        counts[source] = counts.get(source, 0) + 1
-
-    return counts
-def trusted_sources(articles):
-
-    trusted = []
-
-    for article in articles:
-
-        if article["score"] >= 95:
-
-            trusted.append(article)
-
-    return trusted 
- def estimate_confidence(articles):
-
-    if not articles:
-
-        return 0
-
-    trusted = len(
-        trusted_sources(articles)
-    )
-
-    confidence = min(
-
-        100,
-
-        50 + trusted * 5,
-
-    )
-
-    return confidence
 
 USER_PROMPT = """
 Study every article carefully.
@@ -140,9 +81,9 @@ Rules:
 - Never guess.
 - If information is missing, put it in unknown_facts.
 - Return ONLY JSON.
-"""  
+"""
 
-OUTPUT_SCHEMA = {
+OUTPUT_SCHEMA: Dict[str, Any] = {
     "headline": "",
     "verified_facts": [],
     "unknown_facts": [],
@@ -157,86 +98,255 @@ OUTPUT_SCHEMA = {
     "causes": [],
     "effects": [],
     "next_events": [],
-    "confidence": 0
+    "confidence": 0,
 }
 
- def extract_facts(articles):
 
+def validate_articles(articles: Any) -> List[Dict[str, Any]]:
+    """Ensure articles is a list of dicts and normalize missing keys.
+
+    Each article will be normalized to include at least: source, title, text, score.
+    """
+    if not isinstance(articles, list):
+        raise TypeError("articles must be a list of dicts")
+
+    normalized: List[Dict[str, Any]] = []
+    for art in articles:
+        if not isinstance(art, dict):
+            continue
+        normalized.append({
+            "source": str(art.get("source", "unknown")),
+            "title": str(art.get("title", "")),
+            "text": str(art.get("text", "")),
+            "score": float(art.get("score", 0)) if art.get("score") is not None else 0.0,
+        })
+
+    return normalized
+
+
+def build_context(articles: List[Dict[str, Any]]) -> str:
+    """Build a plain-text context containing all articles for the LLM prompt."""
+    parts: List[str] = []
+
+    for i, article in enumerate(articles, start=1):
+        parts.append("""
+ARTICLE {idx}
+
+SOURCE:
+{source}
+
+TITLE:
+{title}
+
+TEXT:
+{text}
+
+------------------------------------
+""".strip().format(
+            idx=i,
+            source=article.get("source", "unknown"),
+            title=article.get("title", ""),
+            text=article.get("text", ""),
+        ))
+
+    return "\n\n".join(parts)
+
+
+def source_agreement(articles: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Count how many articles come from each source."""
+    counts: Dict[str, int] = {}
+    for article in articles:
+        source = article.get("source", "unknown")
+        counts[source] = counts.get(source, 0) + 1
+    return counts
+
+
+def trusted_sources(articles: List[Dict[str, Any]], threshold: float = 95.0) -> List[Dict[str, Any]]:
+    """Return articles whose score is >= threshold."""
+    return [a for a in articles if a.get("score", 0) >= threshold]
+
+
+def estimate_confidence(articles: List[Dict[str, Any]]) -> int:
+    """Estimate a confidence score (0-100) based on number of trusted sources and average score.
+
+    This is a heuristic. The minimum is 0 when there are no articles.
+    """
+    if not articles:
+        return 0
+
+    trusted_count = len(trusted_sources(articles))
+    avg_score = sum(a.get("score", 0) for a in articles) / len(articles)
+
+    # Start from a baseline of 40, add 6 points per trusted source, and weight by avg_score
+    conf = int(min(100, 40 + trusted_count * 6 + (avg_score - 50) * 0.2))
+    return max(0, conf)
+
+
+def extract_facts(
+    articles: List[Dict[str, Any]], model: str = "llama3.1", timeout: Optional[int] = None
+) -> str:
+    """Call the LLM to extract facts and return the raw assistant text.
+
+    Requires the `ollama` package and a running Ollama service. If ollama is not available,
+    this function raises a RuntimeError to make failures explicit.
+    """
+    articles = validate_articles(articles)
     context = build_context(articles)
 
-    response = ollama.chat(
+    if ollama is None:
+        raise RuntimeError(
+            "ollama package is not available. Install and configure Ollama or mock extract_facts in tests."
+        )
 
-        model="llama3.1",
+    try:
+        response = ollama.chat(
+            model=model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": USER_PROMPT + "\n\n" + context},
+            ],
+            timeout=timeout,
+        )
 
-        messages=[
+        # Ollama's client may return different shapes; accept dict-like responses.
+        if isinstance(response, dict):
+            # Try common keys
+            if "message" in response and isinstance(response["message"], dict):
+                return response["message"].get("content", "")
+            return response.get("content", "") or ""
 
-            {
+        # If it's a simple object with str(), return that
+        return str(response)
 
-                "role": "system",
+    except Exception as exc:
+        logger.exception("Failed to call LLM: %s", exc)
+        raise
 
-                "content": SYSTEM_PROMPT,
 
-            },
+JSON_BLOCK_RE = re.compile(r"```json\s*(\{[\s\S]*?\})\s*```|(```\s*(\{[\s\S]*?\})\s*```)|(^\s*(\{[\s\S]*?\})\s*$)", re.MULTILINE)
 
-            {
 
-                "role": "user",
+def parse_facts(text: str) -> Dict[str, Any]:
+    """Extract the first JSON object from text and return it as a dict.
 
-                "content": USER_PROMPT + context,
-
-            },
-
-        ],
-
-    )
-
-    return response["message"]["content"]
-
-def parse_facts(text):
+    If parsing fails, returns a copy of OUTPUT_SCHEMA.
+    """
+    if not text:
+        return OUTPUT_SCHEMA.copy()
 
     text = text.strip()
 
-    if text.startswith("```json"):
-        text = text.replace("```json", "")
+    # Try to find a JSON block inside markdown fences or raw text
+    match = JSON_BLOCK_RE.search(text)
+    candidate = None
+    if match:
+        # match groups may vary depending on which alternative matched
+        for g in match.groups():
+            if g and g.strip().startswith("{"):
+                candidate = g.strip()
+                break
 
-    text = text.replace("```", "")
+    if candidate is None:
+        # As a fallback try to find the first { ... } balanced JSON by searching braces
+        # This is a simple heuristic and not a full parser.
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            candidate = text[start : end + 1]
+
+    if candidate is None:
+        return OUTPUT_SCHEMA.copy()
 
     try:
-        return json.loads(text)
+        parsed = json.loads(candidate)
+        if isinstance(parsed, dict):
+            return parsed
+        # If it's not a dict (e.g., a list), wrap into schema where appropriate
+        return {**OUTPUT_SCHEMA.copy(), "verified_facts": parsed}
 
-    except Exception:
+    except json.JSONDecodeError:
+        logger.exception("Failed to decode JSON from LLM output. Returning empty schema.")
         return OUTPUT_SCHEMA.copy()
- def print_fact_statistics(facts):
 
+
+def print_fact_statistics(facts: Dict[str, Any]) -> None:
+    print()
+    print("========== FACT SHEET ==========")
+    print("Verified :", len(facts.get("verified_facts", [])))
+    print("Unknown  :", len(facts.get("unknown_facts", [])))
+    print("Conflicts:", len(facts.get("conflicting_reports", [])))
+    print("Timeline :", len(facts.get("timeline", [])))
+    print("Confidence:", facts.get("confidence", 0))
+    print("Sources  :", facts.get("sources", {}))
+    print("===============================")
     print()
 
-    print("========== FACT SHEET ==========")
 
-    print("Verified :", len(facts["verified_facts"]))
-    print("Unknown  :", len(facts["unknown_facts"]))
-    print("Conflicts:", len(facts["conflicting_reports"]))
-    print("Timeline :", len(facts["timeline"]))
-    print("Confidence:", facts["confidence"])
+def build_fact_sheet(articles: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """High-level helper: extract facts from articles and return a normalized facts dict.
 
-    print("===============================")
+    This calls the LLM (extract_facts), parses the returned text, and enriches the
+    result with confidence and source agreement information.
+    """
+    articles = validate_articles(articles)
 
-    print()       
-def build_fact_sheet(articles):
-
-    raw = extract_facts(articles)
+    raw = ""
+    try:
+        raw = extract_facts(articles)
+    except Exception as exc:
+        # Do not crash the whole process if the LLM call fails; return an empty schema with metadata
+        logger.exception("LLM extraction failed: %s", exc)
 
     facts = parse_facts(raw)
 
-    facts["confidence"] = estimate_confidence(
-        articles
-    )
+    # Enrich with computed metadata
+    facts["confidence"] = estimate_confidence(articles)
+    facts["sources"] = source_agreement(articles)
 
-    facts["sources"] = source_agreement(
-        articles
-    )
-
-    print_fact_statistics(
-        facts
-    )
+    print_fact_statistics(facts)
 
     return facts
+
+
+if __name__ == "__main__":
+    # Example usage that does not call the LLM by default. Replace or configure as needed.
+    sample_articles = [
+        {
+            "source": "Example News",
+            "title": "Sample headline",
+            "text": "A sample event happened on 2026-08-05 in City X.",
+            "score": 98,
+        },
+        {
+            "source": "Other News",
+            "title": "Another report",
+            "text": "Report confirming details about the sample event.",
+            "score": 96,
+        },
+    ]
+
+    # Demonstrate parse_facts with a canned JSON string so this file is runnable without Ollama.
+    demo_json = json.dumps({
+        "headline": "Sample headline",
+        "verified_facts": ["Sample event on 2026-08-05"],
+        "unknown_facts": [],
+        "conflicting_reports": [],
+        "timeline": [],
+        "people": [],
+        "organizations": [],
+        "locations": [],
+        "countries": [],
+        "numbers": [],
+        "quotes": [],
+        "causes": [],
+        "effects": [],
+        "next_events": [],
+        "confidence": 100,
+    }, indent=2)
+
+    parsed = parse_facts(f"```json\n{demo_json}\n```")
+    parsed["confidence"] = estimate_confidence(sample_articles)
+    parsed["sources"] = source_agreement(sample_articles)
+
+    print_fact_statistics(parsed)
+    print("Fact sheet (short):", {k: parsed[k] for k in ("headline", "confidence")})
