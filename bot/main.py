@@ -34,52 +34,51 @@ def main():
         top_group = group
         break
 
-    if not top_group:
-        print("[INFO] Nothing new to post.")
+    if top_group is None:
+        print("[INFO] Nothing new.")
         return
 
     topic_title = top_group["title"]
+
     article_url = top_group["items"][0]["link"]
+
     source = top_group["items"][0]["source"]
 
     print(f"[INFO] Selected: {topic_title}")
-
-    # ----------------------------
-    # Download article image
-    # ----------------------------
 
     image_path = None
 
     try:
 
-        image_url = image_fetcher.get_article_image(article_url)
+        image_url = image_fetcher.get_article_image(
+            article_url
+        )
 
         if image_url:
-            image_path = image_fetcher.download_image(image_url)
+
+            print("[INFO] Downloading image...")
+
+            image_path = image_fetcher.download_image(
+                image_url
+            )
 
     except Exception as e:
 
         print("[IMAGE]", e)
 
-    # ----------------------------
-    # Collect news
-    # ----------------------------
-
-    print("[INFO] Reading article...")
+    print("[INFO] Reading articles...")
 
     media_texts = sources.gather_deep_dive_texts(
         topic_title
     )
 
-    politician_reactions = sources.gather_politician_reactions(
-        topic_title
+    politician_reactions = (
+        sources.gather_politician_reactions(
+            topic_title
+        )
     )
 
-    # ----------------------------
-    # AI Summary
-    # ----------------------------
-
-    print("[INFO] Building report...")
+    print("[INFO] Building AI report...")
 
     report = summarizer.build_report(
         topic_title,
@@ -87,38 +86,25 @@ def main():
         politician_reactions,
     )
 
-    # ----------------------------
-    # Category
-    # ----------------------------
-
     news_category = category.detect(
         topic_title,
         report,
     )
-
-    # ----------------------------
-    # Breaking
-    # ----------------------------
 
     status = breaking.detect(
         topic_title,
         report,
     )
 
-    # ----------------------------
-    # Hashtags
-    # ----------------------------
-
     tags = hashtags.generate(
         topic_title,
         news_category,
     )
 
-    # ----------------------------
-    # News Card
-    # ----------------------------
-
     card = image_path
+    # ----------------------------
+    # Create News Card
+    # ----------------------------
 
     if image_path:
 
@@ -138,7 +124,7 @@ def main():
             card = image_path
 
     # ----------------------------
-    # Final Message
+    # Build Telegram Post
     # ----------------------------
 
     full_post = f"""
@@ -148,27 +134,29 @@ def main():
 
 <b>{topic_title}</b>
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━
 
 {report}
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━
 
 🌐 <b>Source:</b> {source}
 
 📰 <b>SYSTEMIC NEWS</b>
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━
 
 {tags}
 """
 
-    print("[INFO] Posting...")
+    print("[INFO] Posting to Telegram...")
 
     telegram_poster.post_to_channel(
         full_post,
         card,
     )
+
+    print("[INFO] Saving to database...")
 
     database.save_post(
         topic_title,
@@ -176,7 +164,7 @@ def main():
         source,
     )
 
-    print("[DONE] Success.")
+    print("[DONE] News posted successfully.")
 
 
 if __name__ == "__main__":
