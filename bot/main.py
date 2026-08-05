@@ -159,10 +159,11 @@ full_post = f"""
         image_path
     )
 
-    state["posted_titles"].append(topic_title)
-
-    save_state(state)
-
+   database.save_post(
+    topic_title,
+    article_url,
+    source,
+)
     print("[DONE] Successfully posted.")
 
 
