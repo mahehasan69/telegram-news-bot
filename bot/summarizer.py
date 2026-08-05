@@ -1,114 +1,307 @@
-import requests
+import json
+import ollama
+
 import config
 
-API = "https://api.groq.com/openai/v1/chat/completions"
+SYSTEM_PROMPT = """
+You are the Editor-in-Chief of SYSTEMIC NEWS.
 
+Your articles should feel like they were written by a journalist with 30 years of experience.
 
-def build_report(topic, media, politicians):
+You are not allowed to write generic AI summaries.
 
-    articles = ""
+Every paragraph must provide value.
 
-    for item in media[:8]:
+When information is uncertain,
+say it is uncertain.
 
-        articles += f"""
+When facts conflict,
+say they conflict.
 
-Title:
-{item['title']}
+Never hide uncertainty.
 
-Article:
-{item['text']}
+Never repeat information.
 
-----------------------------
+Always explain:
 
+Why
+
+How
+
+What changes
+
+Who benefits
+
+Who is affected
+
+What happens next
+
+Always sound human.
+
+Never mention AI.
+
+Never mention prompts.
+
+Output only the article.
 """
+EDITOR_PROMPT = """
+You are the Senior Editor of SYSTEMIC NEWS.
 
-    reactions = ""
+Your job is NOT to rewrite everything.
 
-    for item in politicians[:8]:
+Your job is to improve the article.
 
-        reactions += f"""
+Checklist:
 
-{item['person']}
+• Remove robotic writing.
+• Remove repeated ideas.
+• Improve flow.
+• Improve transitions.
+• Improve readability.
+• Make every paragraph interesting.
+• Add missing context if supported by the facts.
+• Keep every fact accurate.
+• Never invent information.
+• Never exaggerate.
 
-{item['title']}
+The finished article should feel like it was written by an award-winning journalist.
 
-{item['text']}
-
-----------------------------
-
+Return ONLY the final article.
 """
+def build_fact_text(facts):
 
-    prompt = f"""
-You are an international journalist.
+    text = ""
 
-Write a professional news report.
+    text += "HEADLINE\n"
 
-TOPIC
-
-{topic}
-
-=====================
-
-MEDIA
-
-{articles}
-
-=====================
-
-REACTIONS
-
-{reactions}
-
-=====================
-
-Rules
-
-Use this structure.
-
-1️⃣ WHAT HAPPENED
-
-2️⃣ WHY THIS IS IMPORTANT
-
-3️⃣ GLOBAL IMPACT
-
-4️⃣ POLITICAL REACTION
-
-5️⃣ WHAT HAPPENS NEXT
-
-Requirements
-
-- Professional journalism
-- Neutral tone
-- Maximum 280 words
-- No fake information
-- No opinions
-- Use only provided articles.
-"""
-
-    r = requests.post(
-        API,
-        headers={
-            "Authorization": f"Bearer {config.GROQ_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": config.GROQ_MODEL,
-            "messages":[
-                {
-                    "role":"system",
-                    "content":"You are BBC News."
-                },
-                {
-                    "role":"user",
-                    "content":prompt
-                }
-            ],
-            "temperature":0.3,
-            "max_tokens":900,
-        },
-        timeout=120,
+    text += facts.get(
+        "headline",
+        "",
     )
 
-    r.raise_for_status()
+    text += "\n\n"
 
-    return r.json()["choices"][0]["message"]["content"]
+    text += "VERIFIED FACTS\n"
+
+    for fact in facts.get(
+        "verified_facts",
+        [],
+    ):
+
+        text += f"• {fact}\n"
+
+    text += "\n"
+
+    text += "TIMELINE\n"
+
+    for event in facts.get(
+        "timeline",
+        [],
+    ):
+
+        text += f"• {event}\n"
+
+    text += "\n"
+
+    text += "PEOPLE\n"
+
+    text += ", ".join(
+        facts.get(
+            "people",
+            [],
+        )
+    )
+
+    text += "\n\n"
+
+    text += "ORGANIZATIONS\n"
+
+    text += ", ".join(
+        facts.get(
+            "organizations",
+            [],
+        )
+    )
+
+    text += "\n\n"
+
+    text += "LOCATIONS\n"
+
+    text += ", ".join(
+        facts.get(
+            "locations",
+            [],
+        )
+    )
+
+    text += "\n\n"
+
+    text += "CAUSES\n"
+
+    for item in facts.get(
+        "causes",
+        [],
+    ):
+
+        text += f"• {item}\n"
+
+    text += "\n"
+
+    text += "EFFECTS\n"
+
+    for item in facts.get(
+        "effects",
+        [],
+    ):
+
+        text += f"• {item}\n"
+
+    text += "\n"
+
+    text += "NEXT EVENTS\n"
+
+    for item in facts.get(
+        "next_events",
+        [],
+    ):
+
+        text += f"• {item}\n"
+
+    return text
+
+USER_PROMPT = """
+Write a world-class news article.
+
+Do NOT summarize.
+
+Write like an experienced journalist.
+
+The reader should understand the event without reading any other article.
+
+Structure:
+
+1. Powerful headline
+
+2. Lead
+Explain the most important information immediately.
+
+3. What happened
+Explain the event in chronological order.
+
+4. Why this matters
+Explain why readers should care.
+
+5. Bigger picture
+Explain historical, political, economic or technological context.
+
+6. What happens next
+Explain likely next official steps.
+
+7. Key Takeaway
+End with one memorable paragraph.
+
+Rules:
+
+• Never invent facts.
+• Never exaggerate.
+• Never repeat yourself.
+• Never sound like AI.
+• Never use clickbait.
+• Explain difficult things simply.
+• Every paragraph should teach the reader something new.
+
+Write naturally.
+
+Maximum 900 words.
+"""
+def generate_article(facts):
+
+    prompt = build_fact_text(facts)
+
+    response = ollama.chat(
+
+        model=config.AI_MODEL,
+
+        messages=[
+
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT,
+            },
+
+            {
+                "role": "user",
+                "content": USER_PROMPT + "\n\n" + prompt,
+            },
+
+        ],
+
+        options={
+            "temperature": 0.35,
+            "top_p": 0.9,
+        },
+
+    )
+
+    return response["message"]["content"]
+
+def edit_article(article):
+
+    response = ollama.chat(
+
+        model=config.AI_MODEL,
+
+        messages=[
+
+            {
+                "role": "system",
+                "content": EDITOR_PROMPT,
+            },
+
+            {
+                "role": "user",
+                "content": article,
+            },
+
+        ],
+
+        options={
+
+            "temperature": 0.2,
+
+            "top_p": 0.9,
+
+        },
+
+    )
+
+    return response["message"]["content"]
+
+def article_statistics(article):
+
+    words = len(article.split())
+
+    paragraphs = len(
+        [p for p in article.split("\n") if p.strip()]
+    )
+
+    print()
+    print("======= ARTICLE =======")
+    print("Words      :", words)
+    print("Paragraphs :", paragraphs)
+    print("=======================")
+    print()
+
+def build_report(facts):
+
+    print("[AI] Writing article...")
+
+    draft = generate_article(facts)
+
+    print("[AI] Editing article...")
+
+    final = edit_article(draft)
+
+    article_statistics(final)
+
+    return final
