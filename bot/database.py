@@ -83,32 +83,20 @@ def get_posted_titles():
 
     cur = conn.cursor()
 
- conn.execute("""
-CREATE TABLE IF NOT EXISTS posted_news(
-
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    title TEXT UNIQUE,
-
-    url TEXT UNIQUE,
-
-    source TEXT,
-
-    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
-)
-""")
+    cur.execute(
+        """
+        SELECT title
+        FROM posted_news
+        """
+    )
 
     rows = cur.fetchall()
 
     conn.close()
 
     return [
-
         row[0]
-
         for row in rows
-
     ]
 
 
