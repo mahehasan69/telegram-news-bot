@@ -455,7 +455,7 @@ def get_source_score(url):
 
 
 class ResearchArticle:
-    def __init__(
+def __init__(
         self,
         title,
         url,
@@ -476,7 +476,7 @@ class ResearchArticle:
 
         self.score = get_source_score(url)
 
-    def to_dict(self):
+def to_dict(self):
 
               return {
             "title": self.title,
@@ -491,7 +491,7 @@ class ResearchArticle:
 
 class ResearchArticle:
 
-    def __init__(
+def __init__(
         self,
         title,
         url,
@@ -524,7 +524,7 @@ class ResearchArticle:
             "published": self.published,
             "score": self.score,
         }
-    def fetch_top_candidates():
+def fetch_top_candidates():
 
     articles = []
 
@@ -549,7 +549,7 @@ class ResearchArticle:
 
     return articles
 
-    def google_news_search(query, limit=30):
+def google_news_search(query, limit=30):
 
     url = (
         "https://news.google.com/rss/search?q="
@@ -590,7 +590,7 @@ class ResearchArticle:
 
     return articles
 
-    def download_article(url, retries=3):
+def download_article(url, retries=3):
 
     for attempt in range(retries):
 
@@ -670,7 +670,7 @@ class ResearchArticle:
 
     return None
 
-     def enrich_articles(articles):
+def enrich_articles(articles):
 
     enriched = []
 
@@ -712,7 +712,7 @@ class ResearchArticle:
 
     return enriched
 
-     def remove_duplicates(articles):
+def remove_duplicates(articles):
 
     seen = set()
 
@@ -737,7 +737,7 @@ class ResearchArticle:
         cleaned.append(article)
 
     return cleaned
-    def similarity(a, b):
+def similarity(a, b):
 
     stop_words = {
 
@@ -777,7 +777,7 @@ class ResearchArticle:
 
     return len(sa & sb) / min(len(sa), len(sb))
 
-    def group_candidates(candidates):
+def group_candidates(candidates):
 
     groups = []
 
@@ -846,7 +846,7 @@ def research_story(title):
 
     return articles
 
-    def pick_top_story(candidates, already_posted):
+def pick_top_story(candidates, already_posted):
 
     groups = group_candidates(candidates)
 
@@ -919,7 +919,7 @@ def research_story(title):
     print("========================\n")
 
     return final_groups[0]
-    def gather_deep_dive_texts(title):
+def gather_deep_dive_texts(title):
 
     articles = research_story(title)
 
@@ -1038,7 +1038,7 @@ def best_image(articles):
 
     )["source"]
 
-    def best_url(articles):
+def best_url(articles):
 
     if not articles:
 
