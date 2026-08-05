@@ -14,7 +14,7 @@ if not TELEGRAM_CHANNEL_ID:
     raise RuntimeError("TELEGRAM_CHANNEL_ID is not set.")
 
 # =========================
-# Groq
+# Groq / Model
 # =========================
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
@@ -23,6 +23,9 @@ if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY is not set.")
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
+
+# Backwards-compatible alias expected by other modules
+AI_MODEL = os.environ.get("AI_MODEL", GROQ_MODEL)
 
 # =========================
 # RSS Feeds
