@@ -167,10 +167,10 @@ full_post = f"""
 """
     print("[INFO] Posting to Telegram...")
 
-    telegram_poster.post_to_channel(
-        full_post,
-        image_path
-    )
+  telegram_poster.post_to_channel(
+    full_post,
+    card,
+)
 
    database.save_post(
     topic_title,
