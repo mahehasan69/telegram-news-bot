@@ -7,7 +7,7 @@ import sources
 import summarizer
 import telegram_poster
 import image_fetcher
-
+import hashtags
 
 def load_state():
     if not os.path.exists(config.STATE_FILE):
