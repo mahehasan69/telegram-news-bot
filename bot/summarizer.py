@@ -90,8 +90,8 @@ Maximum 900 words.
 
 Return ONLY the article.
 """
-def build_fact_text(facts):
 
+def build_fact_text(facts):
     text = ""
 
     text += f"HEADLINE\n{facts.get('headline','')}\n\n"
@@ -102,7 +102,6 @@ def build_fact_text(facts):
         "verified_facts",
         [],
     ):
-
         text += f"• {fact}\n"
 
     text += "\nTIMELINE\n"
@@ -111,7 +110,6 @@ def build_fact_text(facts):
         "timeline",
         [],
     ):
-
         text += f"• {item}\n"
 
     text += "\nCAUSES\n"
@@ -120,7 +118,6 @@ def build_fact_text(facts):
         "causes",
         [],
     ):
-
         text += f"• {item}\n"
 
     text += "\nEFFECTS\n"
@@ -129,7 +126,6 @@ def build_fact_text(facts):
         "effects",
         [],
     ):
-
         text += f"• {item}\n"
 
     text += "\nNEXT EVENTS\n"
@@ -138,12 +134,12 @@ def build_fact_text(facts):
         "next_events",
         [],
     ):
-
         text += f"• {item}\n"
 
     return text
-    def generate_article(facts):
 
+
+def generate_article(facts):
     prompt = build_fact_text(
         facts
     )
@@ -151,133 +147,93 @@ def build_fact_text(facts):
     retries = 3
 
     for attempt in range(retries):
-
         try:
-
             response = client.chat.completions.create(
-
                 model=MODEL,
-
                 temperature=0.35,
-
                 max_tokens=4096,
-
                 messages=[
-
                     {
                         "role": "system",
                         "content": SYSTEM_PROMPT,
                     },
-
                     {
                         "role": "user",
                         "content": USER_PROMPT
                         + "\n\n"
                         + prompt,
                     },
-
                 ],
-
             )
 
             return response.choices[0].message.content
 
         except Exception as e:
-
             logger.warning(
-
                 f"Generate failed ({attempt+1}/3): {e}"
-
             )
-
             time.sleep(2)
 
     return "Unable to generate article."
 
-def edit_article(article):
 
+def edit_article(article):
     retries = 3
 
     for attempt in range(retries):
-
         try:
-
             response = client.chat.completions.create(
-
                 model=MODEL,
-
                 temperature=0.15,
-
                 max_tokens=4096,
-
                 messages=[
-
                     {
                         "role": "system",
                         "content": EDITOR_PROMPT,
                     },
-
                     {
                         "role": "user",
                         "content": article,
                     },
-
                 ],
-
             )
 
             return response.choices[0].message.content
 
         except Exception as e:
-
             logger.warning(
-
                 f"Editor failed ({attempt+1}/3): {e}"
-
             )
-
             time.sleep(2)
 
     return article
-    def article_statistics(article):
 
+
+def article_statistics(article):
     words = len(
         article.split()
     )
 
     paragraphs = len(
-
         [
-
             p
-
             for p in article.split("\n")
-
             if p.strip()
-
         ]
-
     )
 
     print()
-
     print("=" * 50)
-
     print("ARTICLE")
-
     print("=" * 50)
-
     print("Words :", words)
-
     print("Paragraphs :", paragraphs)
-
     print("=" * 50)
-
-    print()
-    def build_report(facts):
-
     print()
 
+
+def build_report(facts):
+    print()
     print("=" * 60)
     print("SYSTEMIC NEWS AI")
     print("=" * 60)
