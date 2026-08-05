@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import date
-
+import category
 import config
 import sources
 import summarizer
@@ -99,16 +99,22 @@ def main():
 
    source = top_group["items"][0]["source"]
 
+news_category = category.detect(topic_title, report)
+
+source = top_group["items"][0]["source"]
+
 full_post = f"""
 🚨 <b>BREAKING NEWS</b>
 
+{news_category}
+
 <b>{topic_title}</b>
 
-━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 
 {report}
 
-━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━
 
 🌐 <b>Source:</b> {source}
 
