@@ -1,54 +1,12 @@
-import json
-import os
-from datetime import date
 import category
-import config
+import breaking
+import database
+import hashtags
+import image_fetcher
+import news_card
 import sources
 import summarizer
 import telegram_poster
-import image_fetcher
-import hashtags
-import breaking
-import database
-import news_card
-
-
-
-
-def top_group = None
-
-for group in sources.group_candidates(candidates):
-
-    article = group["items"][0]
-
-    if database.already_posted(
-        article["title"],
-        article["link"],
-    ):
-        continue
-
-    top_group = group
-    break
-
-if not top_group:
-    print("Nothing new.")
-    return
-
-    with open(config.STATE_FILE, "r", encoding="utf-8") as f:
-        state = json.load(f)
-
-    if state.get("date") != str(date.today()):
-        state = {
-            "date": str(date.today()),
-            "posted_titles": []
-        }
-
-    return state
-
-
-def save_state(state):
-    with open(config.STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
 
 
 def main():
@@ -61,57 +19,67 @@ def main():
         print("[ERROR] No headlines found.")
         return
 
-    state = load_state()
+    top_group = None
 
-    top_group = sources.pick_top_story(
-        candidates,
-        state["posted_titles"],
-    )
+    for group in sources.group_candidates(candidates):
+
+        article = group["items"][0]
+
+        if database.already_posted(
+            article["title"],
+            article["link"],
+        ):
+            continue
+
+        top_group = group
+        break
 
     if not top_group:
-        print("[INFO] Nothing new today.")
+        print("[INFO] Nothing new to post.")
         return
 
     topic_title = top_group["title"]
+    article_url = top_group["items"][0]["link"]
+    source = top_group["items"][0]["source"]
 
     print(f"[INFO] Selected: {topic_title}")
 
-    # -------------------------
-    # ARTICLE URL
-    # -------------------------
-    article_url = top_group["items"][0]["link"]
+    # ----------------------------
+    # Download article image
+    # ----------------------------
 
-    # -------------------------
-    # DOWNLOAD IMAGE
-    # -------------------------
-   image_path = None
-card = None
+    image_path = None
 
-try:
-    image_url = image_fetcher.get_article_image(article_url)
+    try:
 
-    if image_url:
+        image_url = image_fetcher.get_article_image(article_url)
 
-        print("[INFO] Downloading image...")
+        if image_url:
+            image_path = image_fetcher.download_image(image_url)
 
-        image_path = image_fetcher.download_image(image_url)
+    except Exception as e:
 
-except Exception as e:
+        print("[IMAGE]", e)
 
-    print(f"[IMAGE] {e}")
+    # ----------------------------
+    # Collect news
+    # ----------------------------
 
-    # -------------------------
-    # GET ARTICLE CONTENT
-    # -------------------------
     print("[INFO] Reading article...")
 
-    media_texts = sources.gather_deep_dive_texts(topic_title)
+    media_texts = sources.gather_deep_dive_texts(
+        topic_title
+    )
 
-    print("[INFO] Collecting reactions...")
+    politician_reactions = sources.gather_politician_reactions(
+        topic_title
+    )
 
-    politician_reactions = sources.gather_politician_reactions(topic_title)
+    # ----------------------------
+    # AI Summary
+    # ----------------------------
 
-    print("[INFO] Building AI summary...")
+    print("[INFO] Building report...")
 
     report = summarizer.build_report(
         topic_title,
@@ -119,32 +87,61 @@ except Exception as e:
         politician_reactions,
     )
 
-status = breaking.detect(
-    topic_title,
-    report,
-)
-if image_path:
+    # ----------------------------
+    # Category
+    # ----------------------------
 
-    card = news_card.create_news_card(
-        image_path=image_path,
-        title=topic_title,
-        category=news_category,
-        breaking=status,
+    news_category = category.detect(
+        topic_title,
+        report,
     )
-else:
-    card = None
-news_category = category.detect(
-    topic_title,
-    report,
-)
 
-tags = hashtags.generate(
-    topic_title,
-    news_category,
-)
+    # ----------------------------
+    # Breaking
+    # ----------------------------
 
-source = top_group["items"][0]["source"]
-full_post = f"""
+    status = breaking.detect(
+        topic_title,
+        report,
+    )
+
+    # ----------------------------
+    # Hashtags
+    # ----------------------------
+
+    tags = hashtags.generate(
+        topic_title,
+        news_category,
+    )
+
+    # ----------------------------
+    # News Card
+    # ----------------------------
+
+    card = image_path
+
+    if image_path:
+
+        try:
+
+            card = news_card.create_news_card(
+                image_path=image_path,
+                title=topic_title,
+                category=news_category,
+                breaking=status,
+            )
+
+        except Exception as e:
+
+            print("[CARD]", e)
+
+            card = image_path
+
+    # ----------------------------
+    # Final Message
+    # ----------------------------
+
+    full_post = f"""
 {status}
 
 {news_category}
@@ -165,19 +162,21 @@ full_post = f"""
 
 {tags}
 """
-    print("[INFO] Posting to Telegram...")
 
-  telegram_poster.post_to_channel(
-    full_post,
-    card,
-)
+    print("[INFO] Posting...")
 
-   database.save_post(
-    topic_title,
-    article_url,
-    source,
-)
-    print("[DONE] Successfully posted.")
+    telegram_poster.post_to_channel(
+        full_post,
+        card,
+    )
+
+    database.save_post(
+        topic_title,
+        article_url,
+        source,
+    )
+
+    print("[DONE] Success.")
 
 
 if __name__ == "__main__":
