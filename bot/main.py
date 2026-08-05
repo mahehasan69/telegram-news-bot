@@ -8,6 +8,12 @@ import summarizer
 import telegram_poster
 import image_fetcher
 import hashtags
+import breaking
+
+
+
+
+
 
 def load_state():
     if not os.path.exists(config.STATE_FILE):
@@ -97,13 +103,15 @@ def main():
         politician_reactions,
     )
 
-   source = top_group["items"][0]["source"]
+status = breaking.detect(
+    topic_title,
+    report,
+)
 
-news_category = category.detect(topic_title, report)
-
-source = top_group["items"][0]["source"]
-
-news_category = category.detect(topic_title, report)
+news_category = category.detect(
+    topic_title,
+    report,
+)
 
 tags = hashtags.generate(
     topic_title,
@@ -111,7 +119,6 @@ tags = hashtags.generate(
 )
 
 source = top_group["items"][0]["source"]
-
 full_post = f"""
 🚨 <b>BREAKING NEWS</b>
 
