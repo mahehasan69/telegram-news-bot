@@ -120,7 +120,7 @@ tags = hashtags.generate(
 
 source = top_group["items"][0]["source"]
 full_post = f"""
-🚨 <b>BREAKING NEWS</b>
+{status}
 
 {news_category}
 
