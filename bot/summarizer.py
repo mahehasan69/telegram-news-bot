@@ -1,5 +1,10 @@
 import json
-import ollama
+try:
+    import ollama
+except ModuleNotFoundError as e:
+    raise RuntimeError(
+        "Missing dependency 'ollama'. Add 'ollama' to bot/requirements.txt or install it in CI (pip install ollama)."
+    ) from e
 
 import config
 
