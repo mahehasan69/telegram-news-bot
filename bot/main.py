@@ -15,12 +15,24 @@ import database
 
 
 
-def load_state():
-    if not os.path.exists(config.STATE_FILE):
-        return {
-            "date": str(date.today()),
-            "posted_titles": []
-        }
+def top_group = None
+
+for group in sources.group_candidates(candidates):
+
+    article = group["items"][0]
+
+    if database.already_posted(
+        article["title"],
+        article["link"],
+    ):
+        continue
+
+    top_group = group
+    break
+
+if not top_group:
+    print("Nothing new.")
+    return
 
     with open(config.STATE_FILE, "r", encoding="utf-8") as f:
         state = json.load(f)
