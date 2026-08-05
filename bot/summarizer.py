@@ -1,97 +1,100 @@
-import json
 import logging
+import time
 
-# Try to import ollama; fall back gracefully if it's not available or not running.
-try:
-    import ollama
-    from ollama._client import ConnectionError as OllamaConnectionError
-    OLLAMA_AVAILABLE = True
-except Exception:
-    ollama = None
-    OllamaConnectionError = Exception
-    OLLAMA_AVAILABLE = False
+from groq import Groq
 
 import config
 
+logger = logging.getLogger(__name__)
+
+client = Groq(
+    api_key=config.GROQ_API_KEY,
+)
+
+MODEL = config.GROQ_MODEL
+
 SYSTEM_PROMPT = """
-You are the Editor-in-Chief of SYSTEMIC NEWS.
+You are the Chief Editor of SYSTEMIC NEWS.
 
-Your articles should feel like they were written by a journalist with 30 years of experience.
+Write like an investigative journalist.
 
-You are not allowed to write generic AI summaries.
+Never sound like AI.
 
-Every paragraph must provide value.
+Never summarize.
 
-When information is uncertain,
-say it is uncertain.
+Every paragraph must answer:
 
-When facts conflict,
-say they conflict.
+• What happened?
 
-Never hide uncertainty.
+• Why did it happen?
 
-Never repeat information.
+• Why does it matter?
 
-Always explain:
+• What changes now?
 
-Why
+• What happens next?
 
-How
+Rules:
 
-What changes
+• Never invent facts.
 
-Who benefits
-
-Who is affected
-
-What happens next
-
-Always sound human.
-
-Never mention AI.
-
-Never mention prompts.
-
-Output only the article.
-"""
-EDITOR_PROMPT = """
-You are the Senior Editor of SYSTEMIC NEWS.
-
-Your job is NOT to rewrite everything.
-
-Your job is to improve the article.
-
-Checklist:
-
-• Remove robotic writing.
-• Remove repeated ideas.
-• Improve flow.
-• Improve transitions.
-• Improve readability.
-• Make every paragraph interesting.
-• Add missing context if supported by the facts.
-• Keep every fact accurate.
-• Never invent information.
 • Never exaggerate.
 
-The finished article should feel like it was written by an award-winning journalist.
+• Never repeat yourself.
+
+• Never mention AI.
+
+Write naturally.
+
+Return ONLY the article.
+"""
+
+EDITOR_PROMPT = """
+You are the Senior Editor.
+
+Improve the article.
+
+Make it emotional.
+
+Make it human.
+
+Improve transitions.
+
+Remove robotic writing.
+
+Never change facts.
 
 Return ONLY the final article.
 """
 
+USER_PROMPT = """
+Write a premium quality news article.
 
+Structure:
+
+Headline
+
+Lead
+
+What happened
+
+Why this matters
+
+Background
+
+Next developments
+
+Key Takeaway
+
+Maximum 900 words.
+
+Return ONLY the article.
+"""
 def build_fact_text(facts):
 
     text = ""
 
-    text += "HEADLINE\n"
-
-    text += facts.get(
-        "headline",
-        "",
-    )
-
-    text += "\n\n"
+    text += f"HEADLINE\n{facts.get('headline','')}\n\n"
 
     text += "VERIFIED FACTS\n"
 
@@ -102,53 +105,16 @@ def build_fact_text(facts):
 
         text += f"• {fact}\n"
 
-    text += "\n"
+    text += "\nTIMELINE\n"
 
-    text += "TIMELINE\n"
-
-    for event in facts.get(
+    for item in facts.get(
         "timeline",
         [],
     ):
 
-        text += f"• {event}\n"
+        text += f"• {item}\n"
 
-    text += "\n"
-
-    text += "PEOPLE\n"
-
-    text += ", ".join(
-        facts.get(
-            "people",
-            [],
-        )
-    )
-
-    text += "\n\n"
-
-    text += "ORGANIZATIONS\n"
-
-    text += ", ".join(
-        facts.get(
-            "organizations",
-            [],
-        )
-    )
-
-    text += "\n\n"
-
-    text += "LOCATIONS\n"
-
-    text += ", ".join(
-        facts.get(
-            "locations",
-            [],
-        )
-    )
-
-    text += "\n\n"
-
-    text += "CAUSES\n"
+    text += "\nCAUSES\n"
 
     for item in facts.get(
         "causes",
@@ -157,9 +123,7 @@ def build_fact_text(facts):
 
         text += f"• {item}\n"
 
-    text += "\n"
-
-    text += "EFFECTS\n"
+    text += "\nEFFECTS\n"
 
     for item in facts.get(
         "effects",
@@ -168,9 +132,7 @@ def build_fact_text(facts):
 
         text += f"• {item}\n"
 
-    text += "\n"
-
-    text += "NEXT EVENTS\n"
+    text += "\nNEXT EVENTS\n"
 
     for item in facts.get(
         "next_events",
@@ -180,239 +142,160 @@ def build_fact_text(facts):
         text += f"• {item}\n"
 
     return text
+    def generate_article(facts):
 
-USER_PROMPT = """
-Write a world-class news article.
+    prompt = build_fact_text(
+        facts
+    )
 
-Do NOT summarize.
+    retries = 3
 
-Write like an experienced journalist.
+    for attempt in range(retries):
 
-The reader should understand the event without reading any other article.
+        try:
 
-Structure:
+            response = client.chat.completions.create(
 
-1. Powerful headline
+                model=MODEL,
 
-2. Lead
-Explain the most important information immediately.
+                temperature=0.35,
 
-3. What happened
-Explain the event in chronological order.
+                max_tokens=4096,
 
-4. Why this matters
-Explain why readers should care.
+                messages=[
 
-5. Bigger picture
-Explain historical, political, economic or technological context.
+                    {
+                        "role": "system",
+                        "content": SYSTEM_PROMPT,
+                    },
 
-6. What happens next
-Explain likely next official steps.
+                    {
+                        "role": "user",
+                        "content": USER_PROMPT
+                        + "\n\n"
+                        + prompt,
+                    },
 
-7. Key Takeaway
-End with one memorable paragraph.
+                ],
 
-Rules:
+            )
 
-• Never invent facts.
-• Never exaggerate.
-• Never repeat yourself.
-• Never sound like AI.
-• Never use clickbait.
-• Explain difficult things simply.
-• Every paragraph should teach the reader something new.
+            return response.choices[0].message.content
 
-Write naturally.
+        except Exception as e:
 
-Maximum 900 words.
-"""
+            logger.warning(
 
+                f"Generate failed ({attempt+1}/3): {e}"
 
-def _fallback_generate_article(facts):
-    """Deterministic fallback generator used when ollama is unavailable or unreachable."""
-    headline = facts.get("headline") or "Automated News Update"
+            )
 
-    parts = [f"{headline}\n"]
+            time.sleep(2)
 
-    # Lead: use the most salient verified fact or the first timeline entry
-    verified = facts.get("verified_facts", [])
-    timeline = facts.get("timeline", [])
-
-    lead = verified[0] if verified else (timeline[0] if timeline else "No verified facts available.")
-    parts.append(lead + "\n\n")
-
-    # What happened
-    if timeline:
-        parts.append("What happened:\n")
-        for ev in timeline[:5]:
-            parts.append(f"• {ev}\n")
-        parts.append("\n")
-
-    # Why this matters
-    if verified:
-        parts.append("Why this matters:\n")
-        parts.append((verified[0] if verified else "No details available.") + "\n\n")
-
-    # Bigger picture: include organizations/locations
-    orgs = facts.get("organizations", [])
-    locs = facts.get("locations", [])
-    if orgs or locs:
-        bp = "Bigger picture:\n"
-        if orgs:
-            bp += "Organizations involved: " + ", ".join(orgs) + ".\n"
-        if locs:
-            bp += "Locations: " + ", ".join(locs) + ".\n"
-        parts.append(bp + "\n")
-
-    # Next events
-    next_events = facts.get("next_events", [])
-    if next_events:
-        parts.append("What happens next:\n")
-        for ev in next_events[:3]:
-            parts.append(f"• {ev}\n")
-        parts.append("\n")
-
-    # Key takeaway
-    parts.append("Key takeaway: This report is autogenerated due to AI service unavailability. Check original sources for full detail.")
-
-    return "\n".join(parts)
-
-
-def _fallback_edit_article(article: str) -> str:
-    # Minimal edit: trim excessive whitespace and ensure length <= 900 words
-    words = article.split()
-    if len(words) > 900:
-        article = " ".join(words[:900]) + "..."
-    # Remove repeated blank lines
-    lines = [l.rstrip() for l in article.splitlines()]
-    cleaned = []
-    prev_blank = False
-    for l in lines:
-        if not l.strip():
-            if not prev_blank:
-                cleaned.append("")
-            prev_blank = True
-        else:
-            cleaned.append(l)
-            prev_blank = False
-    return "\n".join(cleaned).strip()
-
-
-def generate_article(facts):
-
-    prompt = build_fact_text(facts)
-
-    if not OLLAMA_AVAILABLE:
-        logging.warning("ollama package not installed; using fallback generator.")
-        return _fallback_generate_article(facts)
-
-    try:
-        response = ollama.chat(
-
-            model=config.AI_MODEL,
-
-            messages=[
-
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT,
-                },
-
-                {
-                    "role": "user",
-                    "content": USER_PROMPT + "\n\n" + prompt,
-                },
-
-            ],
-
-            options={
-                "temperature": 0.35,
-                "top_p": 0.9,
-            },
-
-        )
-
-        return response["message"]["content"]
-
-    except OllamaConnectionError as e:
-        logging.warning("Failed to connect to Ollama: %s. Falling back to local generator.", e)
-        return _fallback_generate_article(facts)
-    except Exception as e:
-        logging.exception("Unexpected error while calling Ollama; falling back. %s", e)
-        return _fallback_generate_article(facts)
-
+    return "Unable to generate article."
 
 def edit_article(article):
 
-    if not OLLAMA_AVAILABLE:
-        logging.warning("ollama package not installed; using fallback editor.")
-        return _fallback_edit_article(article)
+    retries = 3
 
-    try:
-        response = ollama.chat(
+    for attempt in range(retries):
 
-            model=config.AI_MODEL,
+        try:
 
-            messages=[
+            response = client.chat.completions.create(
 
-                {
-                    "role": "system",
-                    "content": EDITOR_PROMPT,
-                },
+                model=MODEL,
 
-                {
-                    "role": "user",
-                    "content": article,
-                },
+                temperature=0.15,
 
-            ],
+                max_tokens=4096,
 
-            options={
+                messages=[
 
-                "temperature": 0.2,
+                    {
+                        "role": "system",
+                        "content": EDITOR_PROMPT,
+                    },
 
-                "top_p": 0.9,
+                    {
+                        "role": "user",
+                        "content": article,
+                    },
 
-            },
+                ],
 
-        )
+            )
 
-        return response["message"]["content"]
+            return response.choices[0].message.content
 
-    except OllamaConnectionError as e:
-        logging.warning("Failed to connect to Ollama editor: %s. Using fallback editor.", e)
-        return _fallback_edit_article(article)
-    except Exception as e:
-        logging.exception("Unexpected error while calling Ollama editor; using fallback. %s", e)
-        return _fallback_edit_article(article)
+        except Exception as e:
 
+            logger.warning(
 
-def article_statistics(article):
+                f"Editor failed ({attempt+1}/3): {e}"
 
-    words = len(article.split())
+            )
+
+            time.sleep(2)
+
+    return article
+    def article_statistics(article):
+
+    words = len(
+        article.split()
+    )
 
     paragraphs = len(
-        [p for p in article.split("\n") if p.strip()]
+
+        [
+
+            p
+
+            for p in article.split("\n")
+
+            if p.strip()
+
+        ]
+
     )
 
     print()
-    print("======= ARTICLE =======")
-    print("Words      :", words)
+
+    print("=" * 50)
+
+    print("ARTICLE")
+
+    print("=" * 50)
+
+    print("Words :", words)
+
     print("Paragraphs :", paragraphs)
-    print("=======================")
+
+    print("=" * 50)
+
+    print()
+    def build_report(facts):
+
     print()
 
+    print("=" * 60)
+    print("SYSTEMIC NEWS AI")
+    print("=" * 60)
 
-def build_report(facts):
+    print("[1/2] Writing article...")
 
-    print("[AI] Writing article...")
+    article = generate_article(
+        facts
+    )
 
-    draft = generate_article(facts)
+    print("[2/2] Editing article...")
 
-    print("[AI] Editing article...")
+    article = edit_article(
+        article
+    )
 
-    final = edit_article(draft)
+    article_statistics(
+        article
+    )
 
-    article_statistics(final)
-
-    return final
+    return article
