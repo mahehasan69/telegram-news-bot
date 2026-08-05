@@ -9,7 +9,7 @@ import telegram_poster
 import image_fetcher
 import hashtags
 import breaking
-
+import database
 
 
 
