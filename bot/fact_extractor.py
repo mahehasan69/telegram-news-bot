@@ -227,8 +227,8 @@ def estimate_confidence(articles):
     return confidence
     def extract_facts(articles):
 
-    articles = validate_articles(
-        articles
+         articles = validate_articles(
+         articles
     )
 
     context = build_context(
