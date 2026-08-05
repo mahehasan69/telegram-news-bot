@@ -189,3 +189,36 @@ def gather_politician_reactions(title):
         time.sleep(0.2)
 
     return reactions
+def group_candidates(candidates):
+
+    groups = []
+
+    for item in candidates:
+
+        matched = False
+
+        for g in groups:
+
+            if similarity(item["title"], g["title"]) > 0.45:
+
+                g["items"].append(item)
+
+                matched = True
+
+                break
+
+        if not matched:
+
+            groups.append(
+                {
+                    "title": item["title"],
+                    "items": [item],
+                }
+            )
+
+    groups.sort(
+        key=lambda x: len(x["items"]),
+        reverse=True,
+    )
+
+    return groups
