@@ -115,6 +115,8 @@ OUTPUT_SCHEMA = {
     "confidence": 0,
 
 }
+
+
 def validate_articles(articles):
 
     cleaned = []
@@ -123,13 +125,13 @@ def validate_articles(articles):
 
         cleaned.append({
 
-            "title": article.get("title",""),
+            "title": article.get("title", ""),
 
-            "text": article.get("text",""),
+            "text": article.get("text", ""),
 
-            "source": article.get("source","Unknown"),
+            "source": article.get("source", "Unknown"),
 
-            "score": article.get("score",50),
+            "score": article.get("score", 50),
 
         })
 
@@ -140,7 +142,7 @@ def build_context(articles):
 
     context = ""
 
-    for i, article in enumerate(articles,1):
+    for i, article in enumerate(articles, 1):
 
         context += f"""
 
@@ -170,7 +172,7 @@ def source_agreement(articles):
 
         src = article["source"]
 
-        result[src] = result.get(src,0)+1
+        result[src] = result.get(src, 0) + 1
 
     return result
 
@@ -183,7 +185,7 @@ def trusted_sources(articles):
 
         for a in articles
 
-        if a["score"]>=95
+        if a["score"] >= 95
 
     ]
 
@@ -194,46 +196,44 @@ def estimate_confidence(articles):
 
         return 0
 
-    trusted=len(
+    trusted = len(
 
         trusted_sources(articles)
 
     )
 
-    avg=sum(
+    avg = sum(
 
         a["score"]
 
         for a in articles
 
-    )/len(articles)
+    ) / len(articles)
 
-    confidence=min(
+    confidence = min(
 
         100,
 
         int(
 
-            40+
+            40 +
 
-            trusted*8+
+            trusted * 8 +
 
-            avg*0.2
+            avg * 0.2
 
         )
 
     )
 
     return confidence
-    def extract_facts(articles):
 
-         articles = validate_articles(
-         articles
-    )
 
-    context = build_context(
-        articles
-    )
+def extract_facts(articles):
+
+    articles = validate_articles(articles)
+
+    context = build_context(articles)
 
     retries = 3
 
@@ -284,7 +284,8 @@ def estimate_confidence(articles):
             time.sleep(2)
 
     return ""
-    
+
+
 def parse_facts(text):
 
     if not text:
@@ -337,6 +338,8 @@ def parse_facts(text):
             result[key] = data[key]
 
     return result
+
+
 def print_fact_statistics(facts):
 
     print()
@@ -384,6 +387,7 @@ def print_fact_statistics(facts):
 
     print()
 
+
 def build_fact_sheet(articles):
 
     articles = validate_articles(
@@ -421,6 +425,8 @@ def build_fact_sheet(articles):
     )
 
     return facts
+
+
 if __name__ == "__main__":
 
     sample = [
