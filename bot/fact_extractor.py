@@ -421,7 +421,7 @@ def build_fact_sheet(articles):
     )
 
     return facts
-    if __name__ == "__main__":
+if __name__ == "__main__":
 
     sample = [
 
