@@ -84,17 +84,21 @@ def main():
     # -------------------------
     # DOWNLOAD IMAGE
     # -------------------------
-    image_path = None
+   image_path = None
+card = None
 
-    try:
-        image_url = image_fetcher.get_article_image(article_url)
+try:
+    image_url = image_fetcher.get_article_image(article_url)
 
-        if image_url:
-            print("[INFO] Downloading image...")
-            image_path = image_fetcher.download_image(image_url)
+    if image_url:
 
-    except Exception as e:
-        print(f"[IMAGE] {e}")
+        print("[INFO] Downloading image...")
+
+        image_path = image_fetcher.download_image(image_url)
+
+except Exception as e:
+
+    print(f"[IMAGE] {e}")
 
     # -------------------------
     # GET ARTICLE CONTENT
@@ -119,7 +123,16 @@ status = breaking.detect(
     topic_title,
     report,
 )
+if image_path:
 
+    card = news_card.create_news_card(
+        image_path=image_path,
+        title=topic_title,
+        category=news_category,
+        breaking=status,
+    )
+else:
+    card = None
 news_category = category.detect(
     topic_title,
     report,
