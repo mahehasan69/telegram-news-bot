@@ -1,96 +1,114 @@
 import requests
 import config
 
-API_URL = "https://api.groq.com/openai/v1/chat/completions"
+API = "https://api.groq.com/openai/v1/chat/completions"
 
 
-def build_report(topic_title, media_texts, politician_reactions):
+def build_report(topic, media, politicians):
 
-    media = ""
+    articles = ""
 
-    for item in media_texts[:8]:
-        media += f"""
-Title: {item["title"]}
+    for item in media[:8]:
 
-{item["text"]}
+        articles += f"""
 
---------------------------------
+Title:
+{item['title']}
+
+Article:
+{item['text']}
+
+----------------------------
+
 """
 
-    politicians = ""
+    reactions = ""
 
-    for item in politician_reactions[:10]:
-        politicians += f"""
-{item["person"]}
+    for item in politicians[:8]:
 
-{item["title"]}
+        reactions += f"""
 
-{item["text"]}
+{item['person']}
 
---------------------------------
+{item['title']}
+
+{item['text']}
+
+----------------------------
+
 """
 
     prompt = f"""
-Today's biggest news:
+You are an international journalist.
 
-{topic_title}
+Write a professional news report.
 
-MEDIA ARTICLES
+TOPIC
 
-{media}
+{topic}
 
-POLITICIAN REACTIONS
+=====================
 
-{politicians}
+MEDIA
 
-Write a professional Telegram post.
+{articles}
 
-Use EXACTLY this structure.
+=====================
 
-1️⃣ WHAT HAPPENED
+REACTIONS
 
-2️⃣ HOW THE MEDIA IS COVERING IT
+{reactions}
 
-3️⃣ WHAT POLITICIANS ARE SAYING
-
-4️⃣ WHAT PROBLEMS THE WORLD MAY FACE
-
-5️⃣ MY TAKE
+=====================
 
 Rules
 
-- Professional English
-- Under 350 words
+Use this structure.
+
+1️⃣ WHAT HAPPENED
+
+2️⃣ WHY THIS IS IMPORTANT
+
+3️⃣ GLOBAL IMPACT
+
+4️⃣ POLITICAL REACTION
+
+5️⃣ WHAT HAPPENS NEXT
+
+Requirements
+
+- Professional journalism
+- Neutral tone
+- Maximum 280 words
 - No fake information
-- Use only the provided information
+- No opinions
+- Use only provided articles.
 """
 
-    response = requests.post(
-        API_URL,
+    r = requests.post(
+        API,
         headers={
             "Authorization": f"Bearer {config.GROQ_API_KEY}",
             "Content-Type": "application/json",
         },
         json={
             "model": config.GROQ_MODEL,
-            "messages": [
+            "messages":[
                 {
-                    "role": "system",
-                    "content": "You are an experienced world news editor.",
+                    "role":"system",
+                    "content":"You are BBC News."
                 },
                 {
-                    "role": "user",
-                    "content": prompt,
-                },
+                    "role":"user",
+                    "content":prompt
+                }
             ],
-            "temperature": 0.4,
-            "max_tokens": 900,
+            "temperature":0.3,
+            "max_tokens":900,
         },
         timeout=120,
     )
 
-    response.raise_for_status()
+    r.raise_for_status()
 
-    data = response.json()
-
-    return data["choices"][0]["message"]["content"]
+    return r.json()["choices"][0]["message"]["content"]
