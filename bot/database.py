@@ -83,14 +83,21 @@ def get_posted_titles():
 
     cur = conn.cursor()
 
-    cur.execute(
-        """
-        SELECT title
-        FROM posted_news
-        ORDER BY created DESC
-        LIMIT 1000
-        """
-    )
+ conn.execute("""
+CREATE TABLE IF NOT EXISTS posted_news(
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    title TEXT UNIQUE,
+
+    url TEXT UNIQUE,
+
+    source TEXT,
+
+    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+)
+""")
 
     rows = cur.fetchall()
 
