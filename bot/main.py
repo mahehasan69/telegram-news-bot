@@ -8,7 +8,7 @@ import news_card
 import sources
 import summarizer
 import telegram_poster
-
+import website_publisher
 
 def main():
 
@@ -83,7 +83,20 @@ def main():
     report = summarizer.build_report(
         facts
     )
+summary = ""
 
+paragraphs = report.split("\n")
+
+for p in paragraphs:
+
+    p = p.strip()
+
+    if len(p) > 40:
+
+        summary = p
+
+        break
+        
     print("[6/8] Detecting category...")
 
     news_category = category.detect(
@@ -148,7 +161,43 @@ def main():
         full_post,
         card,
     )
+    website_publisher.create_article(
 
+    title=topic_title,
+
+    summary=summary,
+
+    article=report,
+
+    category=news_category,
+
+    image=image_path if image_path else "assets/images/placeholder.jpg",
+
+    facts=facts.get(
+        "verified_facts",
+        [],
+    ),
+
+    timeline=facts.get(
+        "timeline",
+        [],
+    ),
+
+    sources=list(
+
+        facts.get(
+            "sources",
+            {}
+        ).keys()
+
+    ),
+
+    confidence=facts.get(
+        "confidence",
+        100,
+    ),
+
+)
     print("[8/8] Saving database...")
 
     database.save_post(
