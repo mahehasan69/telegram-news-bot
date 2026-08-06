@@ -9,6 +9,8 @@ import sources
 import summarizer
 import telegram_poster
 import website_publisher
+import website_sync
+
 
 def main():
 
@@ -177,7 +179,11 @@ for p in paragraphs:
         "verified_facts",
         [],
     ),
-
+        
+website_sync.sync_website(
+    image_path=card
+)
+        
     timeline=facts.get(
         "timeline",
         [],
