@@ -6,32 +6,77 @@ on:
   schedule:
     - cron: "0 * * * *"
 
+permissions:
+  contents: write
+
+concurrency:
+  group: telegram-news-bot
+  cancel-in-progress: false
+
 jobs:
+
   news:
+
     runs-on: ubuntu-latest
 
+    timeout-minutes: 30
+
     defaults:
+
       run:
+
         working-directory: bot
 
     steps:
+
       - name: Checkout Repository
+
         uses: actions/checkout@v4
 
       - name: Setup Python
+
         uses: actions/setup-python@v5
+
         with:
+
           python-version: "3.11"
 
+          cache: "pip"
+
+          cache-dependency-path: "bot/requirements.txt"
+
       - name: Install Dependencies
+
         run: |
+
           python -m pip install --upgrade pip
+
           pip install -r requirements.txt
 
-      - name: Run Bot
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      - name: Verify Environment
+
         run: |
+
+          python --version
+
+          pip --version
+
+          ls -la
+
+      - name: Run Bot
+
+        env:
+
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+          WEBSITE_REPO: ${{ secrets.WEBSITE_REPO }}
+
+          WEBSITE_TOKEN: ${{ secrets.WEBSITE_TOKEN }}
+
+        run: |
+
           python main.py
