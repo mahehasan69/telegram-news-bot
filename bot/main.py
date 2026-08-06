@@ -8,8 +8,7 @@ import news_card
 import sources
 import summarizer
 import telegram_poster
-import website_publisher
-import website_sync
+import website_manager
 
 
 def main():
@@ -163,7 +162,8 @@ def main():
         full_post,
         card,
     )
-    website_publisher.create_article(
+    
+   website_manager.publish_article(
 
     title=topic_title,
 
@@ -173,13 +173,13 @@ def main():
 
     category=news_category,
 
-    image=image_path if image_path else "assets/images/placeholder.jpg",
+    image=card,
 
     facts=facts.get(
         "verified_facts",
         [],
     ),
-        
+
     timeline=facts.get(
         "timeline",
         [],
@@ -200,9 +200,6 @@ def main():
     ),
 
 )
-    # Call website sync after creating the article to avoid syntax errors
-    website_sync.sync_website(
-        image_path=card
     )
     print("[8/8] Saving database...")
 
