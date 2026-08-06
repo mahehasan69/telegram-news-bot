@@ -85,20 +85,20 @@ def main():
     report = summarizer.build_report(
         facts
     )
-summary = ""
+    summary = ""
 
-paragraphs = report.split("\n")
+    paragraphs = report.split("\n")
 
-for p in paragraphs:
+    for p in paragraphs:
 
-    p = p.strip()
+        p = p.strip()
 
-    if len(p) > 40:
+        if len(p) > 40:
 
-        summary = p
+            summary = p
 
-        break
-        
+            break
+            
     print("[6/8] Detecting category...")
 
     news_category = category.detect(
@@ -136,26 +136,26 @@ for p in paragraphs:
             card = image_path
 
     full_post = f"""
-{status}
+ {status}
 
-{news_category}
+ {news_category}
 
-<b>{topic_title}</b>
+ <b>{topic_title}</b>
 
-━━━━━━━━━━━━━━━━━━━━━━
+ ━━━━━━━━━━━━━━━━━━━━━━
 
-{report}
+ {report}
 
-━━━━━━━━━━━━━━━━━━━━━━
+ ━━━━━━━━━━━━━━━━━━━━━━
 
-🌐 <b>Source:</b> {source}
+ 🌐 <b>Source:</b> {source}
 
-📰 <b>SYSTEMIC NEWS</b>
+ 📰 <b>SYSTEMIC NEWS</b>
 
-━━━━━━━━━━━━━━━━━━━━━━
+ ━━━━━━━━━━━━━━━━━━━━━━
 
-{tags}
-"""
+ {tags}
+ """
 
     print("[7/8] Posting to Telegram...")
 
@@ -180,10 +180,6 @@ for p in paragraphs:
         [],
     ),
         
-website_sync.sync_website(
-    image_path=card
-)
-        
     timeline=facts.get(
         "timeline",
         [],
@@ -204,6 +200,10 @@ website_sync.sync_website(
     ),
 
 )
+    # Call website sync after creating the article to avoid syntax errors
+    website_sync.sync_website(
+        image_path=card
+    )
     print("[8/8] Saving database...")
 
     database.save_post(
