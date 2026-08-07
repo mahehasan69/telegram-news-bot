@@ -176,7 +176,7 @@ def main():
     ),
     confidence=facts.get("confidence", 100),
 )
-    )
+    
 
     print("[8/8] Saving database...")
 
