@@ -486,16 +486,10 @@ def pick_top_story(candidates, db):
 
         title = group["title"]
 
-        best_article = max(
-    group["items"],
-    key=lambda x: x["score"],
-)
+        best_article = max(group["items"], key=lambda x: x["score"])
 
-if db.is_duplicate(
-    best_article["title"],
-    best_article["url"],
-):
-    continue
+        if db.is_duplicate(best_article["title"], best_article["url"]):
+            continue
 
         score = 0
         # Number of news sources
