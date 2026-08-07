@@ -1,4 +1,3 @@
-
 import hashlib
 import os
 import sqlite3
@@ -192,7 +191,7 @@ class NewsDatabase:
 
             VALUES(
 
-                ?,?,?,?,?,?,?,?,?,?
+                ?,?,?,?,?,?,?,?,?,?,?
 
             )
 
@@ -265,5 +264,4 @@ class NewsDatabase:
 
     def close(self):
 
-        self.conn.close() 
-
+        self.conn.close()
