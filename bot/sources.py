@@ -475,7 +475,7 @@ def research_story(title):
     return articles
 
 
-def pick_top_story(candidates, already_posted):
+def pick_top_story(candidates, db):
     groups = group_candidates(candidates)
     final_groups = []
 
@@ -486,8 +486,16 @@ def pick_top_story(candidates, already_posted):
 
         title = group["title"]
 
-        if any(similarity(title, old) > 0.65 for old in already_posted):
-            continue
+        best_article = max(
+    group["items"],
+    key=lambda x: x["score"],
+)
+
+if db.is_duplicate(
+    best_article["title"],
+    best_article["url"],
+):
+    continue
 
         score = 0
         # Number of news sources
