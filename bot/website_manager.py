@@ -105,7 +105,7 @@ def publish_article(
         "summary": summary,
         "content": article,
         "category": category,
-        "image": os.path.basename(image) if image else "placeholder.jpg",
+        "image": f"assets/images/{os.path.basename(image)}" if image else "assets/images/placeholder.jpg",
         "date": datetime.now().strftime("%Y-%m-%d"),
         "time": datetime.now().strftime("%H:%M"),
         "reading_time": f"{max(1, math.ceil(len(article.split()) / 200))} min read",
