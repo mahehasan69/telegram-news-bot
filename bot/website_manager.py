@@ -196,23 +196,32 @@ def publish_article(
         check=False,
     )
 
-    subprocess.run(
-        [
-            "git",
-            "-C",
-            repo,
-            "push",
-            "origin",
-            BRANCH,
-        ],
-        check=True,
-    )
+    result = subprocess.run(
 
-    shutil.rmtree(
+    [
+
+        "git",
+
+        "-C",
+
         repo,
-        ignore_errors=True,
-    )
 
-    print(
-        "[WEBSITE] Successfully updated."
-    )
+        "push",
+
+        "origin",
+
+        BRANCH,
+
+    ],
+
+    capture_output=True,
+
+    text=True,
+
+)
+
+print(result.stdout)
+
+print(result.stderr)
+
+result.check_returncode()
