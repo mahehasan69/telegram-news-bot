@@ -18,7 +18,7 @@ BRANCH = "main"
 
 def clone_repo():
     temp = tempfile.mkdtemp()
-
+    print("WEBSITE_REPO =", WEBSITE_REPO) 
     url = (
         f"https://x-access-token:{WEBSITE_TOKEN}"
         f"@github.com/{WEBSITE_REPO}.git"
