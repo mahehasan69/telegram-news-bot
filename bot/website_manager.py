@@ -4,9 +4,13 @@ import shutil
 import subprocess
 import tempfile
 from datetime import datetime
+import math
 
-WEBSITE_REPO = os.environ["WEBSITE_REPO"]
-WEBSITE_TOKEN = os.environ["WEBSITE_TOKEN"]
+WEBSITE_REPO = os.getenv("WEBSITE_REPO")
+WEBSITE_TOKEN = os.getenv("WEBSITE_TOKEN")
+
+if not WEBSITE_REPO or not WEBSITE_TOKEN:
+    raise EnvironmentError("Environment variables WEBSITE_REPO and WEBSITE_TOKEN must be set")
 
 MAX_NEWS = 100
 
@@ -104,13 +108,13 @@ def publish_article(
         "image": os.path.basename(image) if image else "placeholder.jpg",
         "date": datetime.now().strftime("%Y-%m-%d"),
         "time": datetime.now().strftime("%H:%M"),
-        "reading_time": f"{max(1, len(article.split()) // 200)} min read",
+        "reading_time": f"{max(1, math.ceil(len(article.split()) / 200))} min read",
         "author": "SYSTEMIC NEWS",
         "confidence": confidence,
         "facts": facts,
         "timeline": timeline,
         "sources": sources,
-        "url": f"article.html?id={article_id-1}",
+        "url": f"article.html?id={article_id}",
         "featured": True,
     }
 
@@ -220,8 +224,8 @@ def publish_article(
 
 )
 
-print(result.stdout)
+    print(result.stdout)
 
-print(result.stderr)
+    print(result.stderr)
 
-result.check_returncode()
+    result.check_returncode()
