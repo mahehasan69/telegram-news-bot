@@ -1,6 +1,5 @@
 import category
 import breaking
-import database
 import fact_extractor
 import hashtags
 import image_fetcher
@@ -9,7 +8,7 @@ import sources
 import summarizer
 import telegram_poster
 import website_manager
-
+from db_manager import DatabaseManager
 
 def main():
 
@@ -18,17 +17,30 @@ def main():
     print("=" * 60)
 
     print("[1/8] Fetching headlines...")
-
+    db = DatabaseManager()
     candidates = sources.fetch_top_candidates()
 
     if not candidates:
         print("[ERROR] No headlines found.")
         return
 
-    top_group = sources.pick_top_story(
-        candidates,
-        database.get_posted_titles(),
-    )
+    top_group = None
+
+    for group in candidates:
+
+    article = group["items"][0]
+
+    if not db.is_duplicate(
+        article["title"],
+        article["url"],
+    ):
+        top_group = group
+        break
+
+if top_group is None:
+    print("[INFO] No new articles found.")
+    db.close()
+    return
 
     if not top_group:
         print("[INFO] Nothing new.")
@@ -180,14 +192,18 @@ def main():
 
     print("[8/8] Saving database...")
 
-    database.save_post(
-        topic_title,
-        article_url,
-        source,
-    )
+db.save_article(
+    title=topic_title,
+    url=article_url,
+    source=source,
+    category=news_category,
+    confidence=facts.get("confidence", 100),
+)
 
-    print()
-    print("✅ News posted successfully.")
+db.sync(f"News: {topic_title}")
+
+print()
+print("✅ News posted successfully.")
 
 
 if __name__ == "__main__":
