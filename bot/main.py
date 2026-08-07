@@ -162,45 +162,33 @@ def main():
         full_post,
         card,
     )
-    
-   website_manager.publish_article(
 
-    title=topic_title,
-
-    summary=summary,
-
-    article=report,
-
-    category=news_category,
-
-    image=card,
-
-    facts=facts.get(
-        "verified_facts",
-        [],
-    ),
-
-    timeline=facts.get(
-        "timeline",
-        [],
-    ),
-
-    sources=list(
-
-        facts.get(
-            "sources",
-            {}
-        ).keys()
-
-    ),
-
-    confidence=facts.get(
-        "confidence",
-        100,
-    ),
-
-)
+    website_manager.publish_article(
+        title=topic_title,
+        summary=summary,
+        article=report,
+        category=news_category,
+        image=card,
+        facts=facts.get(
+            "verified_facts",
+            [],
+        ),
+        timeline=facts.get(
+            "timeline",
+            [],
+        ),
+        sources=list(
+            facts.get(
+                "sources",
+                {}
+            ).keys()
+        ),
+        confidence=facts.get(
+            "confidence",
+            100,
+        ),
     )
+
     print("[8/8] Saving database...")
 
     database.save_post(
