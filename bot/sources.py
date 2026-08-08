@@ -359,26 +359,69 @@ def get_article_image(url):
 
 
 def enrich_articles(articles):
+
     enriched = []
 
     for article in articles:
-        print("[READING]", article["title"][:80])
 
-        article["url"] = resolve_google_url(article["url"])
+        title = article.get("title", "").strip()
+        url = article.get("url", "").strip()
+        summary = article.get("summary", "").strip()
 
-        body = download_article(article["url"])
+        print("[READING]", title[:100])
 
-        if body:
-            article["text"] = body[:6000]
+        if not url:
+            continue
+
+        # Resolve Google News redirect
+        try:
+            article["url"] = resolve_google_url(url)
+        except Exception:
+            article["url"] = url
+
+        final_url = article["url"]
+
+        # Try full article extraction
+        body = ""
+
+        try:
+            body = download_article(final_url)
+        except Exception as e:
+            print("[EXTRACT ERROR]", e)
+
+        # Prefer extracted article text
+        if body and len(body.strip()) >= 300:
+
+            article["text"] = body.strip()[:8000]
+
+        # If extraction fails, use RSS summary
+        elif summary and len(summary.strip()) >= 100:
+
+            print("[FALLBACK] Using RSS summary")
+
+            article["text"] = summary.strip()
+
         else:
-            article["text"] = article.get("summary", "")
 
-        article["image"] = get_article_image(article["url"])
+            print("[SKIP] No usable article text")
 
-        if len(article.get("text", "")) > 500:
-            enriched.append(article)
+            continue
+
+        # Image is optional
+        try:
+            article["image"] = get_article_image(
+                final_url
+            )
+        except Exception:
+            article["image"] = None
+
+        enriched.append(article)
 
         time.sleep(0.2)
+
+    print(
+        f"[RESEARCH] Usable articles: {len(enriched)}"
+    )
 
     return enriched
 
