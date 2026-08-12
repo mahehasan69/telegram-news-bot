@@ -418,14 +418,13 @@ def main():
         )
 
     except Exception as e:
-
         print(
-            f"[WEBSITE ERROR] {e}"
-        )
+             f"[WEBSITE ERROR] {e}"
+             )
 
-        db.close()
-        return
-
+    print(
+        "[WEBSITE] Failed, but continuing to database..."
+         )
     # =========================================
     # DATABASE
     # =========================================
