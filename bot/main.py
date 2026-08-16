@@ -11,6 +11,54 @@ import website_manager
 
 from db_manager import DatabaseManager
 
+def is_valid_article(report):
+    """
+    Validate AI-generated article before publishing.
+    Returns True only when the article looks like real content.
+    """
+
+    if not report:
+        return False
+
+    text = report.strip()
+
+    # Minimum length
+    if len(text) < 300:
+        print("[VALIDATION] Article is too short.")
+        return False
+
+    # Known failure/template responses
+    invalid_phrases = [
+        "unable to generate article",
+        "please provide the article",
+        "please provide an article",
+        "article you would like me to improve",
+        "i will be happy to assist",
+        "i'll be happy to assist",
+        "i will transform it",
+        "i can help you improve",
+        "as an ai",
+        "as an ai language model",
+        "how can i assist",
+        "please provide the text",
+        "please provide the content",
+    ]
+
+    lowered = text.lower()
+
+    for phrase in invalid_phrases:
+
+        if phrase in lowered:
+
+            print(
+                f"[VALIDATION] Invalid AI response detected: "
+                f"{phrase}"
+            )
+
+            return False
+
+    return True
+
 
 def main():
 
@@ -348,14 +396,41 @@ def main():
 {tags}
 """
 
-    print("[7/8] Posting to Telegram...")
+    # ============================================================
+# VALIDATE AI ARTICLE BEFORE PUBLISHING
+# ============================================================
 
-    try:
+if not is_valid_article(report):
 
-        result = telegram_poster.post_to_channel(
-            full_post,
-            card,
-        )
+    print()
+    print("=" * 60)
+    print("[STOP] AI ARTICLE VALIDATION FAILED")
+    print("[STOP] Telegram post cancelled.")
+    print("[STOP] Website update cancelled.")
+    print("[STOP] Database save cancelled.")
+    print("=" * 60)
+
+    return
+
+
+# ============================================================
+# POST TO TELEGRAM
+# ============================================================
+
+print("[7/8] Posting to Telegram...")
+
+telegram_result = telegram_poster.post_to_channel(
+    full_post,
+    card,
+)
+
+if not telegram_result:
+
+    print(
+        "[ERROR] Telegram posting failed."
+    )
+
+    return
 
         print(
             f"[TELEGRAM] Result: {result}"
