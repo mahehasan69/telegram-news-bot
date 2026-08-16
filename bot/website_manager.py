@@ -17,7 +17,7 @@ WEBSITE_TOKEN = os.getenv("WEBSITE_TOKEN")
 
 BRANCH = "main"
 
-MAX_NEWS = 100
+MAX_NEWS = 0
 
 NEWS_FOLDER = "news"
 IMAGE_FOLDER = "assets/images"
@@ -249,8 +249,8 @@ def publish_article(
             data,
         )
 
-        news = news[:MAX_NEWS]
-
+        if MAX_NEWS > 0:
+    news = news[:MAX_NEWS]
         save_news(
             repo,
             news,
