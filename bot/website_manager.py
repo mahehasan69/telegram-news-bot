@@ -250,7 +250,7 @@ def publish_article(
         )
 
         if MAX_NEWS > 0:
-    news = news[:MAX_NEWS]
+            news = news[:MAX_NEWS]
         save_news(
             repo,
             news,
