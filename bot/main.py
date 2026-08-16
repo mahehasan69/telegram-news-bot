@@ -397,43 +397,47 @@ def main():
 """
 
     # ============================================================
-# VALIDATE AI ARTICLE BEFORE PUBLISHING
-# ============================================================
+    # VALIDATE AI ARTICLE BEFORE PUBLISHING
+    # ============================================================
 
-if not is_valid_article(report):
+    if not is_valid_article(report):
 
-    print()
-    print("=" * 60)
-    print("[STOP] AI ARTICLE VALIDATION FAILED")
-    print("[STOP] Telegram post cancelled.")
-    print("[STOP] Website update cancelled.")
-    print("[STOP] Database save cancelled.")
-    print("=" * 60)
+        print()
+        print("=" * 60)
+        print("[STOP] AI ARTICLE VALIDATION FAILED")
+        print("[STOP] Telegram post cancelled.")
+        print("[STOP] Website update cancelled.")
+        print("[STOP] Database save cancelled.")
+        print("=" * 60)
 
-    return
+        db.close()
+        return
 
 
-# ============================================================
-# POST TO TELEGRAM
-# ============================================================
+    # ============================================================
+    # POST TO TELEGRAM
+    # ============================================================
 
-print("[7/8] Posting to Telegram...")
+    print("[7/8] Posting to Telegram...")
 
-telegram_result = telegram_poster.post_to_channel(
-    full_post,
-    card,
-)
+    try:
 
-if not telegram_result:
+        telegram_result = telegram_poster.post_to_channel(
+            full_post,
+            card,
+        )
 
-    print(
-        "[ERROR] Telegram posting failed."
-    )
+        if not telegram_result:
 
-    return
+            print(
+                "[ERROR] Telegram posting failed."
+            )
+
+            db.close()
+            return
 
         print(
-            f"[TELEGRAM] Result: {result}"
+            f"[TELEGRAM] Result: {telegram_result}"
         )
 
     except Exception as e:
@@ -449,7 +453,7 @@ if not telegram_result:
     # WEBSITE
     # =========================================
 
-    print("[WEBSITE] Publishing article...")
+    print("[8/8] Publishing article...")
 
     try:
 
@@ -494,17 +498,14 @@ if not telegram_result:
 
     except Exception as e:
         print(
-             f"[WEBSITE ERROR] {e}"
-             )
+            f"[WEBSITE ERROR] {e}"
+        )
 
-    print(
-        "[WEBSITE] Failed, but continuing to database..."
-         )
     # =========================================
     # DATABASE
     # =========================================
 
-    print("[8/8] Saving database...")
+    print("[9/9] Saving database...")
 
     try:
 
@@ -542,7 +543,10 @@ if not telegram_result:
             f"[DB ERROR] {e}"
         )
 
+        db.close()
         return
+
+    db.close()
 
     print()
     print("=" * 60)
