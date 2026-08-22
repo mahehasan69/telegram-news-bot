@@ -231,6 +231,10 @@ def estimate_confidence(articles):
 
 def extract_facts(articles):
 
+    # Only send the strongest 10 articles to Groq.
+    # Sending all 30 exceeds the current TPM limit.
+    articles = articles[:10]
+
     articles = validate_articles(articles)
 
     context = build_context(articles)
@@ -246,82 +250,54 @@ def extract_facts(articles):
     retries = 3
 
     for attempt in range(retries):
-
         try:
 
             response = client.chat.completions.create(
-
                 model=MODEL,
-
-                temperature=0.1,
-
+                temperature=0.15,
                 max_tokens=4096,
-
                 response_format={
                     "type": "json_object"
                 },
-
                 messages=[
-
                     {
                         "role": "system",
                         "content": SYSTEM_PROMPT,
                     },
-
                     {
                         "role": "user",
-                        "content": (
-                            USER_PROMPT
-                            + "\n\n"
-                            + context
-                        ),
+                        "content": USER_PROMPT
+                        + "\n\n"
+                        + context,
                     },
-
                 ],
-
             )
 
-            raw = response.choices[0].message.content
+            result = response.choices[0].message.content
 
-            print(
-                f"[FACT AI] Response length: "
-                f"{len(raw or '')} characters"
-            )
-
-            if not raw:
-
-                print(
-                    "[FACT AI ERROR] Groq returned empty response."
-                )
-
+            if not result:
+                print("[FACT PARSER] Empty AI response.")
                 continue
 
             print(
-                "[FACT AI] Groq response received."
+                f"[FACT AI] Response length: {len(result)} characters"
             )
 
-            return raw
+            return result
 
         except Exception as e:
 
-            print(
-                f"[FACT AI ERROR] "
-                f"Attempt {attempt + 1}/3: {e}"
+            logger.warning(
+                f"Groq Error ({attempt+1}/3): {e}"
             )
 
-            logger.exception(
-                "Fact extraction failed"
-            )
-
-            time.sleep(2)
+            time.sleep(3)
 
     print(
-        "[FACT AI ERROR] "
-        "All fact extraction attempts failed."
+        "[FACT AI] All fact extraction attempts failed."
     )
 
     return ""
-
 def parse_facts(text):
 
     if not text:
