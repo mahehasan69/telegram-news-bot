@@ -301,11 +301,11 @@ class NewsDatabase:
     # ============================================================
 
     def close(self):
-    if self.conn:
-        try:
-            self.conn.close()
-        except Exception:
-            pass
+        if self.conn:
+            try:
+                self.conn.close()
+            except Exception:
+                pass
 
             print(
                 "[DB] Database connection closed."
