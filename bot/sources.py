@@ -654,33 +654,80 @@ def resolve_google_url(url):
 
 
 def unique_sources(articles):
+
     used = set()
     result = []
 
     for article in articles:
 
-        url = article.get("url", "").strip()
+        url = (
+            article.get("url", "")
+            or ""
+        ).strip()
 
-        # Always prefer the final resolved URL
+        source = (
+            article.get("source", "")
+            or ""
+        ).strip().lower()
+
+        source = source.replace(
+            "www.",
+            ""
+        )
+
+        # If the URL is a real publisher URL,
+        # use its domain.
         if url:
-            source = urlparse(url).netloc.lower()
-            source = source.replace("www.", "")
-        else:
-            source = (article.get("source") or "").lower()
-            source = source.replace("www.", "")
+
+            domain = (
+                urlparse(url)
+                .netloc
+                .lower()
+                .replace("www.", "")
+            )
+
+            # Do NOT treat Google News itself
+            # as the publisher.
+            if (
+                domain
+                and domain != "news.google.com"
+            ):
+                source = domain
 
         if not source:
             source = "unknown"
 
-        # Update article metadata
-        article["source"] = source
-        article["score"] = get_source_score(url) if url else 50
+        # Create a unique key using
+        # publisher + URL.
+        key = (
+            source,
+            url.lower(),
+        )
 
-        if source in used:
+        if key in used:
             continue
 
-        used.add(source)
+        used.add(key)
+
+        article["source"] = source
+
+        # Keep existing source score
+        # instead of accidentally scoring
+        # Google News as the publisher.
+        if url:
+            try:
+                article["score"] = get_source_score(
+                    url
+                )
+            except Exception:
+                article["score"] = 50
+
         result.append(article)
+
+    print(
+        f"[RESEARCH] After source filtering: "
+        f"{len(result)} articles"
+    )
 
     return result
 
