@@ -229,11 +229,24 @@ def estimate_confidence(articles):
     return confidence
 
 
-def extract_facts(articles):
+
+                f"Groq Error ({attempt+1}/3): {e}"
+
+            )
+
+        def extract_facts(articles):
 
     articles = validate_articles(articles)
 
     context = build_context(articles)
+
+    print(
+        f"[FACT AI] Sending {len(articles)} articles to Groq..."
+    )
+
+    print(
+        f"[FACT AI] Context length: {len(context)} characters"
+    )
 
     retries = 3
 
@@ -245,7 +258,7 @@ def extract_facts(articles):
 
                 model=MODEL,
 
-                temperature=0.15,
+                temperature=0.1,
 
                 max_tokens=4096,
 
@@ -262,72 +275,148 @@ def extract_facts(articles):
 
                     {
                         "role": "user",
-                        "content": USER_PROMPT
-                        + "\n\n"
-                        + context,
+                        "content": (
+                            USER_PROMPT
+                            + "\n\n"
+                            + context
+                        ),
                     },
 
                 ],
 
             )
 
-            return response.choices[0].message.content
+            raw = response.choices[0].message.content
+
+            print(
+                f"[FACT AI] Response length: "
+                f"{len(raw or '')} characters"
+            )
+
+            if not raw:
+
+                print(
+                    "[FACT AI ERROR] Groq returned empty response."
+                )
+
+                continue
+
+            print(
+                "[FACT AI] Groq response received."
+            )
+
+            return raw
 
         except Exception as e:
 
-            logger.warning(
+            print(
+                f"[FACT AI ERROR] "
+                f"Attempt {attempt + 1}/3: {e}"
+            )
 
-                f"Groq Error ({attempt+1}/3): {e}"
-
+            logger.exception(
+                "Fact extraction failed"
             )
 
             time.sleep(2)
 
-    return ""
+    print(
+        "[FACT AI ERROR] "
+        "All fact extraction attempts failed."
+    )
 
+    return ""
 
 def parse_facts(text):
 
     if not text:
 
+        print(
+            "[FACT PARSER] Empty AI response."
+        )
+
         return OUTPUT_SCHEMA.copy()
 
     text = text.strip()
 
+    print(
+        f"[FACT PARSER] Raw response length: "
+        f"{len(text)}"
+    )
+
+    # Remove markdown fences
     if text.startswith("```json"):
 
-        text = text.replace(
-            "```json",
-            "",
-        )
+        text = text[
+            len("```json"):
+        ]
 
-    text = text.replace(
-        "```",
-        "",
-    )
+    if text.startswith("```"):
+
+        text = text[
+            len("```"):
+        ]
+
+    if text.endswith("```"):
+
+        text = text[
+            :-3
+        ]
+
+    text = text.strip()
 
     try:
 
         data = json.loads(text)
 
-    except Exception:
+    except Exception as e:
 
+        print(
+            "[FACT PARSER ERROR]",
+            e,
+        )
+
+        # Try to locate JSON object
         start = text.find("{")
         end = text.rfind("}")
 
         if start == -1 or end == -1:
+
+            print(
+                "[FACT PARSER] "
+                "No JSON object found."
+            )
 
             return OUTPUT_SCHEMA.copy()
 
         try:
 
             data = json.loads(
-                text[start:end+1]
+                text[start:end + 1]
             )
 
-        except Exception:
+        except Exception as e:
+
+            print(
+                "[FACT PARSER ERROR] "
+                f"JSON extraction failed: {e}"
+            )
+
+            print(
+                "[FACT PARSER] "
+                f"Response preview: {text[:500]}"
+            )
 
             return OUTPUT_SCHEMA.copy()
+
+    if not isinstance(data, dict):
+
+        print(
+            "[FACT PARSER] "
+            "AI response is not a JSON object."
+        )
+
+        return OUTPUT_SCHEMA.copy()
 
     result = OUTPUT_SCHEMA.copy()
 
@@ -336,6 +425,18 @@ def parse_facts(text):
         if key in data:
 
             result[key] = data[key]
+
+    print(
+        "[FACT PARSER] "
+        f"Verified facts: "
+        f"{len(result.get('verified_facts', []))}"
+    )
+
+    print(
+        "[FACT PARSER] "
+        f"Timeline: "
+        f"{len(result.get('timeline', []))}"
+    )
 
     return result
 
