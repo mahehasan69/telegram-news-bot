@@ -632,11 +632,23 @@ def unique_sources(articles):
     result = []
 
     for article in articles:
-        # normalize source using url if available
-        source = (article.get("source") or "").lower()
-        source = source.replace("www.", "")
-        if not source and article.get("url"):
-            source = urlparse(article["url"]).netloc.lower().replace("www.", "")
+
+        url = article.get("url", "").strip()
+
+        # Always prefer the final resolved URL
+        if url:
+            source = urlparse(url).netloc.lower()
+            source = source.replace("www.", "")
+        else:
+            source = (article.get("source") or "").lower()
+            source = source.replace("www.", "")
+
+        if not source:
+            source = "unknown"
+
+        # Update article metadata
+        article["source"] = source
+        article["score"] = get_source_score(url) if url else 50
 
         if source in used:
             continue
