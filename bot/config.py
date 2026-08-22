@@ -22,7 +22,7 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY is not set.")
 
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 # Backwards-compatible alias expected by other modules
 AI_MODEL = os.environ.get("AI_MODEL", GROQ_MODEL)
