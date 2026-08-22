@@ -278,7 +278,7 @@ def google_news_search(query, limit=30):
             ResearchArticle(
                 title=item.get("title", ""),
                 url=item.get("link", ""),
-                source=urlparse(item.get("link", "")).netloc,
+                source="",
                 summary=item.get("summary", ""),
                 published=item.get("published", ""),
             ).to_dict()
