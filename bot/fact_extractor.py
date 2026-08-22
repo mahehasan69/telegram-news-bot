@@ -229,12 +229,7 @@ def estimate_confidence(articles):
     return confidence
 
 
-
-                f"Groq Error ({attempt+1}/3): {e}"
-
-            )
-
-        def extract_facts(articles):
+def extract_facts(articles):
 
     articles = validate_articles(articles)
 
