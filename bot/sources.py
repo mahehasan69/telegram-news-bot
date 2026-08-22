@@ -543,15 +543,55 @@ def group_candidates(candidates):
 
 
 def research_story(title):
+
     print("[RESEARCH]", title)
 
-    articles = google_news_search(title, limit=30)
-    articles = enrich_articles(articles)
-    articles = remove_duplicates(articles)
-    articles = unique_sources(articles)
+    articles = google_news_search(
+        title,
+        limit=30
+    )
 
-    articles.sort(key=lambda x: x["score"], reverse=True)
-    research_statistics(articles)
+    print(
+        f"[RESEARCH] Google results: "
+        f"{len(articles)}"
+    )
+
+    articles = enrich_articles(
+        articles
+    )
+
+    print(
+        f"[RESEARCH] After enrichment: "
+        f"{len(articles)}"
+    )
+
+    articles = remove_duplicates(
+        articles
+    )
+
+    print(
+        f"[RESEARCH] After title dedupe: "
+        f"{len(articles)}"
+    )
+
+    articles = unique_sources(
+        articles
+    )
+
+    print(
+        f"[RESEARCH] Final sources: "
+        f"{len(articles)}"
+    )
+
+    articles.sort(
+        key=lambda x: x["score"],
+        reverse=True
+    )
+
+    research_statistics(
+        articles
+    )
+
     return articles
 
 
