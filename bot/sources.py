@@ -260,6 +260,7 @@ def fetch_top_candidates():
 
 
 def google_news_search(query, limit=30):
+
     url = (
         "https://news.google.com/rss/search?q="
         + urllib.parse.quote(query)
@@ -268,21 +269,46 @@ def google_news_search(query, limit=30):
 
     try:
         feed = feedparser.parse(url)
-    except Exception:
+    except Exception as e:
+        print("[GOOGLE NEWS ERROR]", e)
         return []
 
     articles = []
 
     for item in feed.entries[:limit]:
+
+        source_name = ""
+
+        try:
+            source_info = item.get("source")
+
+            if source_info:
+
+                if hasattr(source_info, "get"):
+                    source_name = (
+                        source_info.get("title", "")
+                        or source_info.get("name", "")
+                    )
+
+                elif hasattr(source_info, "title"):
+                    source_name = source_info.title
+
+        except Exception:
+            source_name = ""
+
         articles.append(
             ResearchArticle(
                 title=item.get("title", ""),
                 url=item.get("link", ""),
-                source="",
+                source=source_name or "Unknown",
                 summary=item.get("summary", ""),
                 published=item.get("published", ""),
             ).to_dict()
         )
+
+    print(
+        f"[GOOGLE NEWS] Found {len(articles)} results."
+    )
 
     return articles
 
