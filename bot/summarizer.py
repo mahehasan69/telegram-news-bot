@@ -159,7 +159,7 @@ def build_fact_text(facts):
     for fact in verified_facts:
 
         if fact:
-            text += f"• {fact}\n"
+            text += f"- {fact}\n"
 
     text += "\nTIMELINE\n"
 
@@ -169,7 +169,7 @@ def build_fact_text(facts):
     ):
 
         if item:
-            text += f"• {item}\n"
+            text += f"- {item}\n"
 
     text += "\nCAUSES\n"
 
@@ -179,7 +179,7 @@ def build_fact_text(facts):
     ):
 
         if item:
-            text += f"• {item}\n"
+            text += f"- {item}\n"
 
     text += "\nEFFECTS\n"
 
@@ -189,7 +189,7 @@ def build_fact_text(facts):
     ):
 
         if item:
-            text += f"• {item}\n"
+            text += f"- {item}\n"
 
     text += "\nNEXT EVENTS\n"
 
@@ -199,7 +199,7 @@ def build_fact_text(facts):
     ):
 
         if item:
-            text += f"• {item}\n"
+            text += f"- {item}\n"
 
     sources = facts.get(
         "sources",
@@ -218,7 +218,7 @@ def build_fact_text(facts):
             for source in sources.keys():
 
                 text += (
-                    f"• {source}\n"
+                    f"- {source}\n"
                 )
 
         elif isinstance(
@@ -229,7 +229,7 @@ def build_fact_text(facts):
             for source in sources:
 
                 text += (
-                    f"• {source}\n"
+                    f"- {source}\n"
                 )
 
     return text.strip()
@@ -610,13 +610,13 @@ def build_report(facts):
 
     return edited_articleRules:
 
-• Never invent facts.
+- Never invent facts.
 
-• Never exaggerate.
+- Never exaggerate.
 
-• Never repeat yourself.
+- Never repeat yourself.
 
-• Never mention AI.
+- Never mention AI.
 
 Write naturally.
 
@@ -676,7 +676,7 @@ def build_fact_text(facts):
         "verified_facts",
         [],
     ):
-        text += f"• {fact}\n"
+        text += f"- {fact}\n"
 
     text += "\nTIMELINE\n"
 
@@ -684,7 +684,7 @@ def build_fact_text(facts):
         "timeline",
         [],
     ):
-        text += f"• {item}\n"
+        text += f"- {item}\n"
 
     text += "\nCAUSES\n"
 
@@ -692,7 +692,7 @@ def build_fact_text(facts):
         "causes",
         [],
     ):
-        text += f"• {item}\n"
+        text += f"- {item}\n"
 
     text += "\nEFFECTS\n"
 
@@ -700,7 +700,7 @@ def build_fact_text(facts):
         "effects",
         [],
     ):
-        text += f"• {item}\n"
+        text += f"- {item}\n"
 
     text += "\nNEXT EVENTS\n"
 
@@ -708,7 +708,7 @@ def build_fact_text(facts):
         "next_events",
         [],
     ):
-        text += f"• {item}\n"
+        text += f"- {item}\n"
 
     return text
 
