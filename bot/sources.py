@@ -382,15 +382,15 @@ def enrich_articles(articles):
         final_url = article["url"]
 
         # Update source and score after resolving Google News URL
-try:
-    resolved_domain = urlparse(final_url).netloc.lower()
-    resolved_domain = resolved_domain.replace("www.", "")
+        try:
+            resolved_domain = urlparse(final_url).netloc.lower()
+            resolved_domain = resolved_domain.replace("www.", "")
 
-    article["source"] = resolved_domain
-    article["score"] = get_source_score(final_url)
+            article["source"] = resolved_domain
+            article["score"] = get_source_score(final_url)
 
-except Exception:
-    pass
+        except Exception:
+            pass
 
         # Try full article extraction
         body = ""
