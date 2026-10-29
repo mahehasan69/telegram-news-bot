@@ -24,7 +24,7 @@ Key ideas:
 ## Quickstart — install and run
 1. Clone the repo
    ```bash
-   git clone https://github.com/<you>/telegram-news-bot.git
+   git clone https://github.com/mahehasan69/telegram-news-bot.git
    cd telegram-news-bot/bot
    ```
 
