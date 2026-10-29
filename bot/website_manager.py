@@ -164,11 +164,22 @@ def publish_article(
         for item in news:
             item["featured"] = False
 
+        
+        # Give every article its own permanent image filename.
         image_name = "placeholder.jpg"
 
-        if image and os.path.exists(image):
+        if image and os.path.isfile(image):
+            image_folder = get_image_folder(repo)
+            os.makedirs(image_folder, exist_ok=True)
 
-            image_name = os.path.basename(image)
+            # article_id is unique for each published article.
+            image_name = f"news_{article_id}.jpg"
+            destination = os.path.join(image_folder, image_name)
+
+            shutil.copy2(image, destination)
+
+            print(f"[WEBSITE] Unique image saved: {image_name}")
+
 
             image_folder = get_image_folder(repo)
 
