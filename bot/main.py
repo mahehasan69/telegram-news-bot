@@ -468,11 +468,11 @@ def main():
 
     print("[8/8] Website publishing...")
 
-    # Website publishing is paused by default. Telegram posting above
-    # continues normally; set PUBLISH_TO_WEBSITE=true to re-enable it.
+    # Website publishing is enabled by default.
+    # Set PUBLISH_TO_WEBSITE=false only when you want to pause website updates.
     publish_website = os.getenv(
         "PUBLISH_TO_WEBSITE",
-        "false"
+        "true"
     ).strip().lower() in ("1", "true", "yes", "on")
 
     if publish_website:
