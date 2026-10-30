@@ -181,24 +181,6 @@ def publish_article(
             print(f"[WEBSITE] Unique image saved: {image_name}")
 
 
-            image_folder = get_image_folder(repo)
-
-            os.makedirs(
-                image_folder,
-                exist_ok=True,
-            )
-
-            shutil.copy2(
-                image,
-                os.path.join(
-                    image_folder,
-                    image_name,
-                ),
-            )
-
-            print(
-                "[WEBSITE] Image copied."
-            )
 
         reading_time = max(
             1,
