@@ -1,3 +1,4 @@
+import hashlib
 import category
 import breaking
 import fact_extractor
@@ -151,6 +152,12 @@ def main():
 
     print("[2/8] Downloading image...")
 
+    import hashlib
+
+    image_key = hashlib.sha256(
+        (article_url or topic_title).encode("utf-8")
+    ).hexdigest()[:16]
+
     image_path = None
 
     try:
@@ -162,16 +169,20 @@ def main():
         if image_url:
 
             image_path = image_fetcher.download_image(
-                image_url
+                image_url,
+                filename=f"news_{image_key}.jpg"
             )
 
+            print(
+                f"[IMAGE] URL: {image_url}"
+            )
             print(
                 f"[IMAGE] Downloaded: {image_path}"
             )
 
         else:
 
-            print("[IMAGE] No image found.")
+            print("[IMAGE] No suitable image found.")
 
     except Exception as e:
 
@@ -356,6 +367,7 @@ def main():
                 title=topic_title,
                 category=news_category,
                 breaking=status,
+                output=f"news_card_{image_key}.jpg",
             )
 
             print(
