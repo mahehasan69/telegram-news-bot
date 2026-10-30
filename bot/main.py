@@ -1,4 +1,5 @@
 import hashlib
+import os
 import category
 import breaking
 import fact_extractor
@@ -465,53 +466,33 @@ def main():
     # WEBSITE
     # =========================================
 
-    print("[8/8] Publishing article...")
+    print("[8/8] Website publishing...")
 
-    try:
+    # Website publishing is paused by default. Telegram posting above
+    # continues normally; set PUBLISH_TO_WEBSITE=true to re-enable it.
+    publish_website = os.getenv(
+        "PUBLISH_TO_WEBSITE",
+        "false"
+    ).strip().lower() in ("1", "true", "yes", "on")
 
-        website_result = website_manager.publish_article(
-
-            title=topic_title,
-
-            summary=summary,
-
-            article=report,
-
-            category=news_category,
-
-            image=card,
-
-            facts=facts.get(
-                "verified_facts",
-                [],
-            ),
-
-            timeline=facts.get(
-                "timeline",
-                [],
-            ),
-
-            sources=list(
-                facts.get(
-                    "sources",
-                    {},
-                ).keys()
-            ),
-
-            confidence=facts.get(
-                "confidence",
-                100,
-            ),
-        )
-
-        print(
-            f"[WEBSITE] Result: {website_result}"
-        )
-
-    except Exception as e:
-        print(
-            f"[WEBSITE ERROR] {e}"
-        )
+    if publish_website:
+        try:
+            website_result = website_manager.publish_article(
+                title=topic_title,
+                summary=summary,
+                article=report,
+                category=news_category,
+                image=card,
+                facts=facts.get("verified_facts", []),
+                timeline=facts.get("timeline", []),
+                sources=list(facts.get("sources", {}).keys()),
+                confidence=facts.get("confidence", 100),
+            )
+            print(f"[WEBSITE] Result: {website_result}")
+        except Exception as e:
+            print(f"[WEBSITE ERROR] {e}")
+    else:
+        print("[WEBSITE] Publishing paused (PUBLISH_TO_WEBSITE=false).")
 
     # =========================================
     # DATABASE
